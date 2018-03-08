@@ -2,3 +2,5 @@
 pic-sure.cabal
 *~
 token
+*.el
+TAGS

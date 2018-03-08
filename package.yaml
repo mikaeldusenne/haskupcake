@@ -24,6 +24,23 @@ dependencies:
 
 library:
   source-dirs: src
+  dependencies:
+    - http-conduit
+    - bytestring
+    - conduit
+    - resourcet
+    - http-client
+    - http-types
+    - conduit-extra
+    - aeson
+    - unordered-containers
+    - vector
+    - filepath
+    - hlib
+    - case-insensitive
+    - aeson-pretty
+    - text
+    - uri-encode
 
 executables:
   pic-sure:
@@ -35,18 +52,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - pic-sure
-    - http-conduit
     - bytestring
-    - conduit
-    - resourcet
-    - http-client
-    - conduit-extra
-    - aeson
-    - unordered-containers
-    - vector
-    - filepath
     - hlib
-    - case-insensitive
 
 tests:
   pic-sure-test:
@@ -58,3 +65,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - pic-sure
+    - hspec
+    - bytestring
