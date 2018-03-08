@@ -101,3 +101,52 @@ data Field = Field {dataTypes :: [DTT],
              
 instance FromJSON PRD
 instance FromJSON Field
+
+
+
+
+
+
+-- ("fields",Array [
+--     Object (fromList [
+--                ("<dataTypes>"),
+--                ("description",String "By Encounter")])])
+--                ("id",Number 1.0),
+--                ("name",String "By Encounter"),
+--                ("path",String "ENOUNTER"),
+--                ("permittedValues",Array [String "YES",String "NO"]),
+--                ("relationships",Null),
+--                ("required",Bool True),
+
+--  = Just (Array [
+--              Object (fromList [
+--                         ("predicates",Array [
+--                             Object (fromList [
+--                                        ("<dataTypes>"),
+--                                        ("name",String "CONTAINS"),
+--                                        ("defaultPredicate",Bool True),
+--                                        ("displayName",String "Contains"),
+--                                        ("id",Number 1.0),
+--                                        ("description",String "Contains value"),
+--                                        ("paths",Array []),
+--                                        ("<fields>")
+--                                        ]),
+--                         ("logicalOperators",Array [String "AND"]),
+--                         ("<dataTypes>"),
+--                         ("selectOperations",Array []),
+--                         ("visualizations",Array []),
+--                         ("selectFields",Array []),
+--                         ("sorts",Array []),
+--                         ("name",String "PMSDN-dev"),
+--                         ("relationships",Array [String "PARENT"]),
+--                         ("implementation",String "i2b2/tranSMART"),
+--                         ("processes",Array []),
+--                         ("id",Number 1.0),
+--                         ("joins",Array [])])])]
+
+
+-- datatypes = Array [
+--   Object (fromList [
+--              ("pattern",String "^(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2}):(\\d{2})$"),
+--              ("name",String "dateTime"),
+--              ("description",String "Date in yyyy-mm-dd hh:mm:ss format. With hours in 24 hour format")])]

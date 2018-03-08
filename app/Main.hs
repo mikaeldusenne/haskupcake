@@ -14,6 +14,6 @@ config = BS.readFile "./token" >>= (\tok -> return (Config {domain = "https://pm
 main = do
   config <- config
   pmsdn <- head <$> listServices config
-  -- (show <$> buildPathTree config pmsdn) >>> putStrLn >>= writeFile "tree"
-  lsPath config "PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)"
-    >>= print
+  (show <$> buildPathTree config pmsdn) >>> putStrLn >>= writeFile "tree"
+  -- lsPath config "PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)"
+  --   >>= print
