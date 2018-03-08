@@ -5,7 +5,7 @@ import Data.Aeson
 import Control.Applicative
 import qualified Data.Vector as V
 
-import General
+import Utils.General
 
 newtype PSResources = PSResources [PSR]
   deriving (Show, Generic)

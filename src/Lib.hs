@@ -12,6 +12,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Conduit
 import Data.Conduit.Binary (sinkFile)
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad
 import Control.Monad.Trans.Resource
 
 import Control.Exception
@@ -26,11 +27,14 @@ import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
 import Data.List
 
-import General
-import List
-import Trees
+import System.Directory
 
-import Utils
+import Utils.General
+import Utils.List
+import Utils.Trees
+import Utils.Json
+import Utils.Paths
+
 import Types
 import Config
 
@@ -61,7 +65,7 @@ picsureGet' a b = picsureGet a b []
 listServices :: Config -> IO [String]
 listServices c = do
   resp <- picsureGet' c urlResources
-  return $ fmap (unString . Utils.lookup "name") . fromJust . decode $ resp
+  return $ fmap (unString . Utils.Json.lookup "name") . fromJust . decode $ resp
 
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
 
@@ -75,17 +79,26 @@ lsPath relative c path = do
           then subStrAfterPath path
           else Prelude.id
   -- return $ Pretty.encodePretty $ (decode resp :: Maybe Value)
-  return $ fmap ( f . unString . Utils.lookup "pui")
+  return $ fmap ( f . unString . Utils.Json.lookup "pui")
     . fromJust . decode $ resp
 
 
 lsPath' = lsPath False
 
+completedFile = lines <$> readFile "data/.completed"
 
-buildPathTree :: Config -> [Char] -> IO (Tree [Char])
-buildPathTree c from =
-  print from >> (appendFile "tree_" . (take (pathLength from) (repeat ' ')++) $ (dirname from) ++ "\n") >>
-  lsPath True c from
-  >>= traverse (buildPathTree c . (from</>)) >>= (return . Node from)
+-- buildPathTree :: Config -> [Char] -> IO (Tree [Char])
+buildPathTree :: Config -> [Char] -> IO ()
+buildPathTree c from = let dirname = "data" </> from
+                           isComplete = (flip elem) <$> completedFile
+  in print from >>
+  not . ($from) <$> isComplete
+  >>= (`when` (
+        createDirectoryIfMissing True dirname
+        >> lsPath True c from
+        >>= traverse (buildPathTree c . (from</>))
+        >> appendFile "data/.completed" (from++"\n")))
+
+  -- >> (appendFile "tree_" . (take (pathLength from) (repeat ' ')++) $ (dirname from) ++ "\n")
 
 

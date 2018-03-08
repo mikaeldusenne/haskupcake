@@ -6,7 +6,7 @@ import qualified Data.ByteString.Char8 as BS
 
 import Lib
 import Config
-import General
+import Utils.General
 
 
 config = BS.readFile "./token" >>= (\tok -> return (Config {domain = "https://pmsdn-dev.hms.harvard.edu", token = tok}))
