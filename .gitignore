@@ -9,3 +9,5 @@ tree*
 data
 logs
 config.json
+/*.csv
+test/TestResults.hs
