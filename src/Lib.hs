@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields, BangPatterns #-}
 module Lib where
 
 import Network.HTTP.Conduit
@@ -14,7 +14,7 @@ import Data.Conduit.Binary (sinkFile)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad
 import Control.Monad.Trans.Resource
-
+import Control.Concurrent (threadDelay)
 import Control.Exception
 
 import Data.Aeson
@@ -28,6 +28,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.List
 
 import System.Directory
+import System.IO
 
 import Utils.General
 import Utils.List
@@ -44,61 +45,82 @@ urlResourceService = "resourceService"
 urlResources = "resources"
 urlPath = "path"
 
-picsureGet :: Config -> String -> RequestHeaders -> IO BSL.ByteString
+-- |send a GET request to the pic-sure api.
+-- returns the body of the request if all went well.
+-- HTTP 500 errors are logged and skipped
+-- HTTP 401 (unauthorized) are thrown (token needs to be refreshed)
+-- for other errors, wait a bit and retry (for unstable connexions)
+picsureGet :: Config -> String -> RequestHeaders -> IO (Maybe [Value])
 picsureGet config url args = do
-  let fullUrl = domain config </> urlApi </> urlResourceService </> 
-                (foldl' (</>) "". (URI.encode<$>) . splitOn (=='/') $ url) -- encode the provided url
-      tok = ("bearer "<>) $ token config
+  let encodeUrlPath = foldl' (</>) "". (URI.encode <$>) . splitOn (=='/')
+
+  let fullUrl = domain config </> urlApi </> urlResourceService </> encodeUrlPath url
+      tok = ("bearer "<>) $ token config -- prepare for GET parameter
   -- putStrLn fullUrl
 
-  let f = (responseBody<$>) <$> runResourceT $ do
+  let handleError n = (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n")
+                      >> print fullUrl >> print url
+
+      exceptionHandler e@(HttpExceptionRequest _ (StatusCodeException c _)) =
+        (putStrLn $ show e) >> f (statusCode . responseStatus $ c)
+        where f codeNb 
+                | codeNb `elem` [500] = handleError codeNb >> return Nothing -- throw e -- give up on those error codes
+                | codeNb `elem` [401] = throw e
+                | otherwise = picsureGet config url args
+      exceptionHandler e = threadDelay 10000 >> picsureGet config url args
+
+      f = (decode . responseBody<$>) <$> runResourceT $ do
         manager <- liftIO $ newManager tlsManagerSettings
         req <- liftIO $ (\r -> r {requestHeaders = args ++ [("Authorization", tok)],
                                   responseTimeout = responseTimeoutNone})
                <$> parseUrlThrow fullUrl
         httpLbs req manager
-  catch f (\e -> (putStrLn $ show (e :: HttpException)) >> picsureGet config url args)
+  catch f exceptionHandler
 
+-- |send a request without parameters
 picsureGet' a b = picsureGet a b []
 
-
+-- |list available services on pic-sure
 listServices :: Config -> IO [String]
 listServices c = do
   resp <- picsureGet' c urlResources
-  return $ fmap (unString . Utils.Json.lookup "name") . fromJust . decode $ resp
+  return $ fmap (unString . Utils.Json.lookup "name") $ fromJust resp
 
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
 
-dirname = last . filter (not . isEmpty) . splitOn (=='/')
+pathdirname = last . filter (not . isEmpty) . splitOn (=='/')
 pathLength = length . splitOn (=='/')
 
 lsPath :: Bool -> Config -> String -> IO [String]
 lsPath relative c path = do
   resp <- picsureGet' c (urlPath </> path)
-  let f = if relative
-          then subStrAfterPath path
-          else Prelude.id
-  -- return $ Pretty.encodePretty $ (decode resp :: Maybe Value)
-  return $ fmap ( f . unString . Utils.Json.lookup "pui")
-    . fromJust . decode $ resp
-
+  let pui = ( f . unString . Utils.Json.lookup "pui")
+        where f = if relative then subStrAfterPath path else Prelude.id
+  return $ case resp of Nothing -> []
+                        Just r -> fmap pui $ r
 
 lsPath' = lsPath False
 
-completedFile = lines <$> readFile "data/.completed"
+completedFile = "data/.completed"
 
--- buildPathTree :: Config -> [Char] -> IO (Tree [Char])
+-- TODO conduit / streaming!!
+-- or pure path building and then IO actions, but then we need to handle all the possible errors
 buildPathTree :: Config -> [Char] -> IO ()
-buildPathTree c from = let dirname = "data" </> from
-                           isComplete = (flip elem) <$> completedFile
-  in print from >>
-  not . ($from) <$> isComplete
-  >>= (`when` (
-        createDirectoryIfMissing True dirname
-        >> lsPath True c from
-        >>= traverse (buildPathTree c . (from</>))
-        >> appendFile "data/.completed" (from++"\n")))
+buildPathTree c fromNode = do
+  let go !completed node = let -- bangpattern needed to enforce strictness of reading (file locked error)
+        dirname = "data" </> node
+        isNotComplete = not $ elem node completed
+        in print (pathdirname node) >>
+           when isNotComplete (
+               createDirectoryIfMissing True dirname
+               >> lsPath True c node
+               >>= traverse (go completed . (node</>))
+               >> appendFile completedFile (node++"\n"))
+               -- >> hPutStrLn h (node ++ "\n"))
+               -- >>= (return . (node:) . concat))
+     
+  completed <- lines <$> readFile completedFile
+  go completed fromNode
+  
 
   -- >> (appendFile "tree_" . (take (pathLength from) (repeat ' ')++) $ (dirname from) ++ "\n")
-
-

@@ -4,3 +4,7 @@ pic-sure.cabal
 token
 *.el
 TAGS
+tree*
+
+data
+logs
