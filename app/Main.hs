@@ -12,6 +12,6 @@ import Utils.General
 main = do
   config <- readConfig "./config.json"
   pmsdn <- head <$> listServices config
-  (show <$> buildPathTree config pmsdn) >>> putStrLn >>= writeFile "tree"
+  buildPathTree config pmsdn
   -- lsPath True config path
   --   >>= print
