@@ -86,11 +86,13 @@ listServices c = do
   resp <- picsureGet' c urlResources
   return $ fmap (unString . Utils.Json.lookup "name") $ fromJust resp
 
+-- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
 
 pathdirname = last . filter (not . isEmpty) . splitOn (=='/')
 pathLength = length . splitOn (=='/')
 
+-- |the equivalent of `ls`, list the direct children of a given path in pic-sure
 lsPath :: Bool -> Config -> String -> IO [String]
 lsPath relative c path = do
   resp <- picsureGet' c (urlPath </> path)
@@ -103,8 +105,12 @@ lsPath' = lsPath False
 
 completedFile = "data/.completed"
 
--- TODO conduit / streaming!!
+
+-- TODO conduit / streaming
 -- or pure path building and then IO actions, but then we need to handle all the possible errors
+-- |reproduces the data tree in the file system by creating a directory for each item
+-- this is for testing purposes, the amount of HTTP requests needed if way to high and
+-- this takes ages to complete.
 buildPathTree :: Config -> [Char] -> IO ()
 buildPathTree c fromNode = do
   let go !completed node = let -- bangpattern needed to enforce strictness of reading (file locked error)
