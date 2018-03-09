@@ -55,19 +55,19 @@ picsureGet config url args = do
   let encodeUrlPath = foldl' (</>) "". (URI.encode <$>) . splitOn (=='/')
 
   let fullUrl = domain config </> urlApi </> urlResourceService </> encodeUrlPath url
-      tok = ("bearer "<>) $ token config -- prepare for GET parameter
+      tok = BS.pack . ("bearer "<>) $ token config -- prepare for GET parameter
   -- putStrLn fullUrl
 
   let handleError n = (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n")
                       >> print fullUrl >> print url
-
+      handleRetry e = print e >> threadDelay 1000000 >> picsureGet config url args
       exceptionHandler e@(HttpExceptionRequest _ (StatusCodeException c _)) =
         (putStrLn $ show e) >> f (statusCode . responseStatus $ c)
         where f codeNb 
                 | codeNb `elem` [500] = handleError codeNb >> return Nothing -- throw e -- give up on those error codes
                 | codeNb `elem` [401] = throw e
-                | otherwise = picsureGet config url args
-      exceptionHandler e = threadDelay 10000 >> picsureGet config url args
+                | otherwise = handleRetry e
+      exceptionHandler e = handleRetry e
 
       f = (decode . responseBody<$>) <$> runResourceT $ do
         manager <- liftIO $ newManager tlsManagerSettings
@@ -116,7 +116,7 @@ buildPathTree c fromNode = do
   let go !completed node = let -- bangpattern needed to enforce strictness of reading (file locked error)
         dirname = "data" </> node
         isNotComplete = not $ elem node completed
-        in print (pathdirname node) >>
+        in putStrLn ((take (pathLength node - 1) $ repeat ' ') ++ (pathdirname node)) >> -- just being fancy
            when isNotComplete (
                createDirectoryIfMissing True dirname
                >> lsPath True c node
