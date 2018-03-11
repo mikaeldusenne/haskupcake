@@ -12,3 +12,4 @@ lookup k (Object o) = fromJust $ HM.lookup k o
 unString :: Value -> String
 unString (String s) = T.unpack s
 
+stringToValue = String . T.pack

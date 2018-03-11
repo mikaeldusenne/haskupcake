@@ -11,7 +11,7 @@ import qualified Data.Aeson.Encode.Pretty as Pretty
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.ByteString.Char8 as BS
 import Data.Conduit
-import Data.Conduit.Binary (sinkFile)
+-- import Data.Conduit.Binary (sinkFile)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
@@ -28,8 +28,6 @@ import Config
 import Utils.Paths
 import Utils.List
 
-import ReaderConfig
-
 urlApi = "rest/v1"
 
 load :: String -> ReaderT Config IO String
@@ -41,35 +39,34 @@ load s = do
 encodeUrlPath = foldl' (</>) "" . (URI.encode <$>) . splitOn (=='/')
 
 -- | adds the root path to api for building requests
-buildUrl c url = domain c </> urlApi </> encodeUrlPath url
+buildUrl url = ((</> (urlApi </> encodeUrlPath url)) . domain) <$> ask
+
+picsureRequest :: String -> (Request -> Request) -> ReaderT Config IO (Response BSL.ByteString)
+picsureRequest url buildf = do
+  config <- ask
+  fullUrl <- buildUrl url
+  let tok = BS.pack . ("bearer "<>) $ token config -- prepare for GET parameter
+      setRequestOptions r = r {requestHeaders = requestHeaders r ++ [("Authorization", tok)],
+                               responseTimeout = responseTimeoutNone}
+  -- putStrLn fullUrl
+  runResourceT $ do
+    manager <- liftIO $ newManager tlsManagerSettings
+    req <- liftIO $ setRequestOptions . buildf <$> parseUrlThrow fullUrl
+    liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
+    httpLbs req manager
+
 
 -- |send a GET request to the pic-sure api
 -- the provided url will be appened to the root api url,
 -- aka https://<domain>/rest/v1/
-picsuretest :: String -> RequestHeaders -> ReaderT Config IO (Response BSL.ByteString)
-picsuretest url args = do
-  config <- ask
-  let fullUrl = buildUrl config url
-      tok = BS.pack . ("bearer "<>) $ token config -- prepare for GET parameter
-  -- putStrLn fullUrl
-  runResourceT $ do
-    manager <- liftIO $ newManager tlsManagerSettings
-    req <- liftIO $ (\r -> r {requestHeaders = args ++ [("Authorization", tok)],
-                              responseTimeout = responseTimeoutNone})
-           <$> parseUrlThrow fullUrl
-    httpLbs req manager
+picsureGetRequest :: String -> RequestHeaders -> ReaderT Config IO (Response BSL.ByteString)
+picsureGetRequest url params = do
+  picsureRequest url (\r -> r {requestHeaders = params})
 
-picsureGetDetailed :: Config -> String -> RequestHeaders -> IO (Response BSL.ByteString)
-picsureGetDetailed config url args = do
-  let fullUrl = buildUrl config url
-      tok = BS.pack . ("bearer "<>) $ token config -- prepare for GET parameter
-  -- putStrLn fullUrl
-  runResourceT $ do
-    manager <- liftIO $ newManager tlsManagerSettings
-    req <- liftIO $ (\r -> r {requestHeaders = args ++ [("Authorization", tok)],
-                              responseTimeout = responseTimeoutNone})
-           <$> parseUrlThrow fullUrl
-    httpLbs req manager
+picsurePostRequest :: String -> BSL.ByteString -> ReaderT Config IO (Response BSL.ByteString)
+picsurePostRequest url body = do
+  picsureRequest url (\r -> r{method = "POST",
+                              requestBody = RequestBodyLBS body})
 
 -- |returns the body of the request encoded with Aeson if all went well.
 -- HTTP 500 errors are logged and skipped
@@ -79,6 +76,7 @@ picsureGet :: String -> RequestHeaders -> ReaderT Config IO (Maybe [Value])
 picsureGet url params = do
   -- we're in the Reader Monad, `ask` gives us the environment, ie the Config value
   c <- ask
+  fullUrl <- buildUrl url
   let -- exceptionHandler :: HttpException -> ReaderT Config IO (Maybe [Value])
       exceptionHandler e =
         case e of -- 
@@ -93,20 +91,19 @@ picsureGet url params = do
                 
               -- handleError :: Int -> IO (Maybe [Value])
               handleError n = (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n")
-                              >> print (buildUrl c url) >> print url
+                              >> print fullUrl >> print url
                               >> return Nothing
-                where fullUrl = buildUrl c url
 
               -- retry :: HttpException -> ReaderT Config IO (Maybe [Value])
               retry e = liftIO (print e >> threadDelay 1000000) >> picsureGet url params
 
       -- get :: ReaderT Config IO (Maybe [Value])
-      get =  (decode . responseBody <$> picsuretest url params)
+      get =  (decode . responseBody <$> picsureGetRequest url params)
       
   (liftCatch catch) get exceptionHandler
 
 -- picsureGet :: String -> RequestHeaders -> ReaderT Config IO (Maybe [Value])
--- picsureGet url params = do -- (decode . responseBody<$>) <$> picsureGetDetailed
+-- picsureGet url params = do -- (decode . responseBody<$>) <$> picsureGetRequest
 --   c <- ask
 --   let fullUrl = buildUrl c url
 --       handleError n = liftIO ((appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n")
@@ -131,12 +128,12 @@ picsureGetWith insert url params = picsureGet (insert </> url) params
 picsureGetWith' insert url = picsureGetWith insert url []
 
 
-testRequest :: Config -> String -> RequestHeaders -> IO ()
-testRequest c url params = do
-  let fullUrl = buildUrl c url
-  print fullUrl
-  let f = picsureGetDetailed c url params >>= display
+testRequest :: String -> RequestHeaders -> ReaderT Config IO ()
+testRequest url params = do
+  fullUrl <- buildUrl url
+  liftIO $ print fullUrl
+  let f = picsureGetRequest url params >>= (liftIO . display)
         where display r = print r
                 >> BSL.putStrLn ( Pretty.encodePretty (decode . responseBody $ r :: Maybe [Value]))
-      g e = print (e :: HttpException)
-  catch f g
+      g e = liftIO $ print (e :: HttpException)
+  (liftCatch catch) f g

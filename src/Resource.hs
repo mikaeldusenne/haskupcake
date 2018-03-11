@@ -58,6 +58,7 @@ findPath term = do
 -- and that the nextf function returns a list of absolute paths
 bfs ::
   ([Char] -> ReaderT Config IO [[Char]]) -> ([Char] -> Bool) -> [Char] -> ReaderT Config IO [Char]
+-- todo cleaner / more abstract types?
 bfs nextf checkf startNode = let
   run (node : nodes)
     | checkf node = return node
