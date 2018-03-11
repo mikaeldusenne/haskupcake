@@ -41,6 +41,8 @@ library:
     - text
     - uri-encode
     - directory
+    - mtl
+    - transformers
 
 executables:
   pic-sure:

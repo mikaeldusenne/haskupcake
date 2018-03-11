@@ -1,17 +1,18 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import qualified Data.ByteString.Lazy.Char8 as BSL
-import qualified Data.ByteString.Char8 as BS
-
-import Lib
+import Resource
 import Config
-import Utils.General
 
+import Control.Monad.Trans.Reader
+
+-- just some useless stuff
+f l = lsPath' (head l) >>= (\l' -> (if l' == [] then return l else f $ l'))
 
 main = do
   config <- readConfig "./config.json"
-  pmsdn <- head <$> listServices config
-  buildPathTree config pmsdn
-  -- lsPath True config path
+  -- pmsdn <- head <$> runReaderT listServices config
+  -- runReaderT (buildPathTree pmsdn) config
+  runReaderT (searchPath' "Clinical" >>= lsPath' >>= f) config >>= print
   --   >>= print

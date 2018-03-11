@@ -11,3 +11,5 @@ logs
 config.json
 /*.csv
 test/TestResults.hs
+ignore
+\#*
