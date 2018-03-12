@@ -18,6 +18,7 @@ import PicSure.Query
 import PicSure.Utils.Paths
 import PicSure.Types
 
+run :: ReaderT Config IO b -> IO b
 run f = do
   config <- readConfig "./config.json"
   runReaderT f config
@@ -27,26 +28,31 @@ main = do
   config <- readConfig "./config.json"
   pui <- readFile "pui"
 
-  (`runReaderT` config) $ do
+  -- (`runReaderT` config) $ do
     -- now we're in the Reader Monad
-
+  
+  l <- run $ do
+    paths <- lsPath' ""
+    liftIO $ print paths
+    lsPath' $ head paths
+  print l
     -- buildPathTree pmsdn
     -- searchPath' "" >>= lsPath' >>= print
     -- listResources >>= liftIO . BSL.putStrLn . Pretty.encodePretty
     
-    let field = (Field {pui=pui, dataType="STRING"})
-        vars = [Variable {field=field, alias="first_alias"}]
-        whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
+    -- let field = (Field {pui=pui, dataType="STRING"})
+    --     vars = [Variable {field=field, alias="first_alias"}]
+    --     whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
     
-    -- debug queries id#
-    n <- query vars [whereclause]
+    -- -- debug queries id#
+    -- n <- query vars [whereclause]
 
-    -- and with liftIO we can do IO things
-    liftIO $ do
-      putStrLn $ "id: " ++ show n
-      threadDelay 1000000
+    -- -- and with liftIO we can do IO things
+    -- liftIO $ do
+    --   putStrLn $ "id: " ++ show n
+    --   threadDelay 1000000
 
-    resultStatus n
-    resultStatus (n+1)
+    -- resultStatus n
+    -- resultStatus (n+1)
   
   -- sequence_ (map (run . (\n -> liftIO (print n) >> resultStatus n)) [110..125])

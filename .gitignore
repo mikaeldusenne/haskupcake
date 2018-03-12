@@ -1,11 +1,9 @@
 .stack-work/
-pic-sure.cabal
 *~
 token
 *.el
 TAGS
 tree*
-
 data
 logs
 config.json
@@ -15,3 +13,4 @@ ignore
 \#*
 todo.org
 pui
+haskupcake.cabal

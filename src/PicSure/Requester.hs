@@ -68,7 +68,7 @@ picsureRequest' url buildf = do
   runResourceT $ do
     manager <- liftIO $ newManager tlsManagerSettings
     req <- liftIO $ setRequestOptions . buildf <$> parseUrlThrow fullUrl
-    liftIO $ logRequest req
+    when (debug config) . liftIO $ logRequest req
     -- liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
     httpLbs req manager
 
@@ -96,12 +96,12 @@ picsureRequest url buildf = do
                 | otherwise = retry e
                 
               -- handleError :: Int -> IO (Maybe [Value])
-              handleError n = (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n")
-                              >> print fullUrl >> print url
-                              >> return Nothing
+              handleError n = -- (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n") >>
+                              print fullUrl >> print url >>
+                              return Nothing
 
               -- retry :: HttpException -> ReaderT Config IO (Maybe [Value])
-              retry e = liftIO (print e >> threadDelay 1000000) >> picsureRequest url buildf
+              retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> picsureRequest url buildf
 
       -- get :: ReaderT Config IO (Maybe [Value])
       get = decode . responseBody <$> picsureRequest' url buildf

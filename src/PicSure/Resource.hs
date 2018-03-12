@@ -56,41 +56,42 @@ findPath term = do
 -- assumes that the tree is acyclic (which it is with pic-sure)
 -- and that the nextf function returns a list of absolute paths
 bfs ::
-  ([Char] -> ReaderT Config IO [[Char]]) -> ([Char] -> Bool) -> [Char] -> ReaderT Config IO [Char]
+  ([Char] -> ReaderT Config IO [String]) -> (String -> Bool) -> String -> ReaderT Config IO (Maybe String)
 -- todo cleaner / more abstract types?
 bfs nextf checkf startNode = let
+  run [] = return Nothing
   run (node : nodes)
-    | checkf node = return node
+    | checkf node = return (Just node)
     | otherwise   = liftIO (putStrLn node) >>
                     nextf node >>= (run . (nodes++))
   in run [startNode]
 
--- |search a specific node in all the available resources
-searchPath :: String -> String -> ReaderT Config IO String
+-- |search a specific <node>, starting at the absolute path <from>
+searchPath :: String -> String -> ReaderT Config IO (Maybe String)
 searchPath node from = bfs lsPath' ((==node) . pathdirname) from
 
--- |search from root
+-- |search in all the available resources
 searchPath' node = searchPath node ""
 
 -------- tests --------
 
-completedFile = "data/.completed"
+-- completedFile = "data/.completed"
 
--- |reproduces the data tree in the file system by creating a directory for each item
--- this is for testing purposes, the amount of HTTP requests needed if way to high and
--- this takes ages to complete.
-buildPathTree :: [Char] -> ReaderT Config IO ()
-buildPathTree fromNode = do
-  let go !completed node = do -- bangpattern needed to enforce strictness of reading (file locked error)
-        let dirname = "data" </> node
-            isNotComplete = not $ elem node completed
-        liftIO $ putStrLn ((take (pathLength node - 1) $ repeat ' ') ++ show (pathLength node) ++ (pathdirname node)) -- just being fancy
-        when ((pathLength node <= 8) && isNotComplete) $ do
-          liftIO $ createDirectoryIfMissing True dirname
-          lsPath True node >>= traverse (go completed . (node</>))
-          return ()
-          -- >> appendFile completedFile (node++"\n")
-          -- >> hPutStrLn h (node ++ "\n"))
-          -- >>= (return . (node:) . concat))  
-  completed <- lines <$> (liftIO $ readFile completedFile)
-  go completed fromNode
+-- -- |reproduces the data tree in the file system by creating a directory for each item
+-- -- this is for testing purposes, the amount of HTTP requests needed if way to high and
+-- -- this takes ages to complete.
+-- buildPathTree :: [Char] -> ReaderT Config IO ()
+-- buildPathTree fromNode = do
+--   let go !completed node = do -- bangpattern needed to enforce strictness of reading (file locked error)
+--         let dirname = "data" </> node
+--             isNotComplete = not $ elem node completed
+--         liftIO $ putStrLn ((take (pathLength node - 1) $ repeat ' ') ++ show (pathLength node) ++ (pathdirname node)) -- just being fancy
+--         when ((pathLength node <= 8) && isNotComplete) $ do
+--           liftIO $ createDirectoryIfMissing True dirname
+--           lsPath True node >>= traverse (go completed . (node</>))
+--           return ()
+--           -- >> appendFile completedFile (node++"\n")
+--           -- >> hPutStrLn h (node ++ "\n"))
+--           -- >>= (return . (node:) . concat))  
+--   completed <- lines <$> (liftIO $ readFile completedFile)
+--   go completed fromNode
