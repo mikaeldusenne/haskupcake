@@ -68,6 +68,6 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - pic-sure
+    - haskupcake
     - hspec
     - bytestring
