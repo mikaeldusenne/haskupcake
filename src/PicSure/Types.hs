@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
-module Types where
+module PicSure.Types where
 
 import Data.Aeson
 import qualified Data.HashMap.Strict as M
@@ -9,11 +9,11 @@ import GHC.Generics
 
 import qualified Data.Text as T
 
-import Utils.General
-import Utils.Json
+import PicSure.Utils.General
+import PicSure.Utils.Json
 
 data Field = Field {pui :: String,
-                    datatype :: String}
+                    dataType :: String}
   deriving (Generic)
 
 

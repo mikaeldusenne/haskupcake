@@ -1,10 +1,10 @@
-module Utils.Json where
+module PicSure.Utils.Json where
 
 import qualified Data.HashMap.Strict as HM
 import Data.Aeson
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Utils.General
+import PicSure.Utils.General
 
 
 lookup :: T.Text -> Value -> Value

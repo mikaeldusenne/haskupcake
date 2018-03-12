@@ -1,4 +1,4 @@
-module Utils.Paths where
+module PicSure.Utils.Paths where
 
 import Data.List
 

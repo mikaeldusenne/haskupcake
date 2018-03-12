@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
-module Config where
+module PicSure.Config where
 
 import Data.Aeson
 import GHC.Generics
 import qualified Data.ByteString.Lazy.Char8 as BSL
 
-import Utils.General
+import PicSure.Utils.General
 
 data Config = Config {
   token :: String,

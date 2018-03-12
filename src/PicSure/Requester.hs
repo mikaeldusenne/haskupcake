@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Requester where
+module PicSure.Requester where
 
 import Network.HTTP.Conduit
 -- import Network.HTTP.Client
@@ -25,10 +25,11 @@ import Data.List
 
 import Data.List (foldl')
 import System.IO
-import Config
-import Utils.Paths
-import Utils.General
-import Utils.List
+
+import PicSure.Config
+import PicSure.Utils.Paths
+import PicSure.Utils.General
+import PicSure.Utils.List
 
 urlApi = "rest/v1"
 

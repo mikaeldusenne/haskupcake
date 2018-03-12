@@ -1,4 +1,4 @@
-module Utils.General where
+module PicSure.Utils.General where
 
 fromJust Nothing = error "could not apply fromJust to Nothing"
 fromJust (Just a) = a

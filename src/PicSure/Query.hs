@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DuplicateRecordFields, DeriveGeneric #-}
-module Query where
+module PicSure.Query where
 
 import Data.Aeson
 import qualified Data.HashMap.Strict as M
@@ -15,13 +15,13 @@ import qualified Data.Text as T
 
 import Data.Scientific
 
-import Utils.Paths
-import Utils.List
-import Utils.General
-import Utils.Json
-import Requester
-import Config
-import Types
+import PicSure.Utils.Paths
+import PicSure.Utils.List
+import PicSure.Utils.General
+import PicSure.Utils.Json
+import PicSure.Requester
+import PicSure.Config
+import PicSure.Types
 
 urlQueryService = "queryService"
 urlRunQuery     = urlQueryService </> "runQuery"
@@ -35,7 +35,7 @@ urlResultDownload   = urlResultService </> "result"
 query :: Integral n => [Variable] -> [Where] -> ReaderT Config IO n
 query cols whereClause = do
   let body = encode $ Query {select=cols, whereClauses=whereClause}
-      extract o = Utils.Json.lookup "resultId" o
+      extract o = PicSure.Utils.Json.lookup "resultId" o
   -- liftIO $ BSL.putStrLn body
   fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) <$> picsurePostRequest urlRunQuery body
 

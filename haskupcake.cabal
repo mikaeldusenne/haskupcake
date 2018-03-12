@@ -1,0 +1,93 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 310bdd2e2d29914467c4a05c03cba1fda144f3fb3729536740c0e16d954051fe
+
+name:           haskupcake
+version:        0.1.0.0
+description:    Please see the README on Github at <https://github.com/mikaunix/haskupcake#readme>
+homepage:       https://github.com/mikaunix/haskupcake#readme
+bug-reports:    https://github.com/mikaunix/haskupcake/issues
+author:         Mikaël Dusenne
+maintainer:     mikaeldusenne@gmail.com
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/mikaunix/haskupcake
+
+library
+  hs-source-dirs:
+      src
+  build-depends:
+      aeson
+    , aeson-pretty
+    , base >=4.7 && <5
+    , bytestring
+    , case-insensitive
+    , conduit
+    , conduit-extra
+    , directory
+    , filepath
+    , http-client
+    , http-conduit
+    , http-types
+    , mtl
+    , resourcet
+    , scientific
+    , text
+    , transformers
+    , unordered-containers
+    , uri-encode
+    , vector
+  exposed-modules:
+      PicSure.Config
+      PicSure.Query
+      PicSure.Requester
+      PicSure.Resource
+      PicSure.Types
+      PicSure.Utils.General
+      PicSure.Utils.Json
+      PicSure.Utils.List
+      PicSure.Utils.Paths
+      PicSure.Utils.Trees
+  other-modules:
+      Paths_haskupcake
+  default-language: Haskell2010
+
+executable haskupcake
+  main-is: Main.hs
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , haskupcake
+  other-modules:
+      Paths_haskupcake
+  default-language: Haskell2010
+
+test-suite haskupcake-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , hspec
+    , pic-sure
+  other-modules:
+      TestResults
+      Paths_haskupcake
+  default-language: Haskell2010

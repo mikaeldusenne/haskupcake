@@ -1,4 +1,4 @@
-module Utils.Trees where
+module PicSure.Utils.Trees where
 
 import Data.List(foldl')
 

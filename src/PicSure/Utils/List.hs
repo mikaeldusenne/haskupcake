@@ -1,29 +1,7 @@
-module Utils.List where
+module PicSure.Utils.List where
 
-
--- import GHC.Generics (Generic)
 import Data.List
-import Utils.General
--- import General
--- import Tuple
--- import Control.DeepSeq
--- import Data.Time.Clock
--- import Control.Parallel
--- import Control.Monad.Par
--- import Debug.Trace
--- import Data.List(isPrefixOf,foldl')
--- import Data.Char
--- import qualified Data.HashMap.Lazy as M
--- import Data.Hashable
--- count :: Num β => [α] -> β
-
--- count [] = 0
--- count (x:xs) = 1+count xs
-
--- tail recursion
--- count = count' 0
---   where count' k [] = k
---         count' k (x:xs) = count' (k+1) xs
+import PicSure.Utils.General
 
 ---------------------------------------------------
 {- SAFE -}

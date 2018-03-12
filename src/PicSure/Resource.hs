@@ -1,19 +1,19 @@
 {-# LANGUAGE OverloadedStrings, BangPatterns #-}
-module Resource where
+module PicSure.Resource where
 
 import Control.Monad
 import System.Directory
 
-import Utils.General
-import Utils.List
-import Utils.Trees
-import Utils.Json
-import Utils.Paths
-import Config
-import Requester
-
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
+
+import PicSure.Utils.General
+import PicSure.Utils.List
+import PicSure.Utils.Trees
+import PicSure.Utils.Json
+import PicSure.Utils.Paths
+import PicSure.Config
+import PicSure.Requester
 
 urlResourceService = "resourceService"
 urlResources = urlResourceService </> "resources"
@@ -23,8 +23,10 @@ urlFind = urlResourceService </> "find"
 
 -- |list available services on pic-sure
 listServices :: ReaderT Config IO [String]
-listServices = fmap (unString . Utils.Json.lookup "name") . unArray . fromJust
-               <$> picsureGetRequest' urlResources
+listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray . fromJust
+               <$> listResources
+
+listResources = picsureGetRequest' urlResources
 
 -- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
@@ -38,7 +40,7 @@ lsPath :: Bool -> String -> ReaderT Config IO [String]
 lsPath _ "" = listServices
 lsPath relative path = do
   resp <- picsureGetRequest' (urlPath </> path)
-  let pui = ( f . unString . Utils.Json.lookup "pui")
+  let pui = ( f . unString . PicSure.Utils.Json.lookup "pui")
         where f = if relative then subStrAfterPath path else Prelude.id
   return $ case resp of Nothing -> []
                         Just r -> fmap pui . unArray $ r
