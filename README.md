@@ -8,13 +8,14 @@ it's name is strongly influenced by the [Rcupcake](https://github.com/hms-dbmi/R
 
 The use of [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) is recommended.
 
-### Clone the repo
+
+### Use the library
+
+#### Clone the repo
 
 ```sh
 git clone https://github.com/mikaunix/haskupcake
 ```
-
-### Use the library
 
 To use the library in your own projects, add the path to the directory containing the cloned haskupcake repo to your `stack.yaml`:
 
@@ -23,8 +24,19 @@ packages:
 - .
 - /path/to/haskupcake
 ```
+#### Let stack do it for you
 
-and add the library as a dependency of your project in your `package.yaml` file:
+Instead of manually cloning the repo, you can [specify the github repo with a commit](https://github.com/commercialhaskell/stack/blob/master/doc/yaml_configuration.md#git-and-mercurial-repos) in the `stack.yaml` file:
+
+```
+extra-deps:
+- git: git@github.com:mikaunix/haskupcake.git
+  commit: 876c2f3a2944fd3f06ff612a911d6a0d2922c748
+```
+
+#### Add haskupcake to the dependencies
+
+Finally add the library as a dependency of your project in your `package.yaml` file:
 
 ```
 executables:
@@ -57,7 +69,7 @@ This is a simple json file, containing an object that needs to have a `domain` a
 }
 ```
 
-it needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.  
+Tt needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.  
 The `debug` attribute is optional, and gives a more detailled output.
 
 ### Reader monad
@@ -65,7 +77,7 @@ The `debug` attribute is optional, and gives a more detailled output.
 The configuration file is passed around with the help of the [Reader Monad](https://wiki.haskell.org/All_About_Monads#The_Reader_monad).
 Therefore you will need to initiate your calls with `runReaderT` and lift your IO operations with `liftIO`.
 
-you may define such a `run` function, that takes some action in the readerT monad and returns an IO operation.
+You may define a helper `run` function, that takes some action in the readerT monad and returns an IO operation.
 
 ```haskell
 run :: ReaderT Config IO a -> IO a
@@ -95,11 +107,11 @@ main = do
   print l
 ```
 
-this would print the paths directly under the root directory, and return the result of listing the first of those paths. This is not a useful thing to do, but at least it's clear how to insert IO.
+This would print the paths directly under the root directory, and return the result of listing the first of those paths. This is not a useful thing to do, but at least it clearly shows how to insert IO.
 
 ### Requesting paths
 
-As we saw earlier, it's possible to list the direct children of a given path quite easily. `lsPath` takes one more parameter than `lsPath'`, a boolean value to return the relative path:
+As we saw earlier, it's possible to list the direct children of a given path quite easily. `lsPath` takes one more parameter than `lsPath'`, a boolean value to return only the names of the nodes instead of the full path:
 
 ```haskell
 lsPath :: Bool -> String -> ReaderT Config IO [String]
@@ -117,15 +129,14 @@ searchPath node from = bfs lsPath' ((==node) . pathdirname) from
 
 -- |search in all the available resources
 searchPath' node = searchPath node ""
-
 ```
 
 This will perform a breadth-first search on all the available paths and return the first one with the same name as the one you provided, or nothing if it didn't find anything.  
-Use it with a bit of patience at hand, because one HTTP request has to be performet at each step, and it can take a long time to complete.
+Use it with a bit of patience at hand, because one HTTP request has to be performed at each step, and it can take a long time to complete.
 
 ### Querying data
 
-the `query` function takes a list of `Variable`, a list of `Where` clauses, and builds a JSON body out of them and sends it to PIC-SURE's runQuery.
+the `query` function takes a list of `Variable`, a list of `Where` clauses, and builds a JSON body out of them and sends it to PIC-SURE's runQuery. Thoses types are defined in the `PicSure.Type` module.
 
 You'll get back a query ID, which you can use with `resultStatus`, `resultAvailableformats` and `resultDownload`.
 
