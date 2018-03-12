@@ -175,3 +175,11 @@ nice'title s = unlines
           where n = length (head ls') - 2
         f = surround2 "│ " " │"
         ls' = map f . allToMaxSize ' ' . lines $ s
+
+intercal :: α -> [α] -> [α]
+intercal _ [] = []
+intercal _ [x] = [x]
+intercal e (x:xs) = x : e : intercal e xs
+
+afterEach :: α -> [α] -> [α]
+afterEach e = (++[e]) . intercal e

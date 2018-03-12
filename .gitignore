@@ -13,3 +13,5 @@ config.json
 test/TestResults.hs
 ignore
 \#*
+todo.org
+pui

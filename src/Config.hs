@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 module Config where
 
 import Data.Aeson
@@ -17,6 +17,4 @@ instance FromJSON Config
 
 
 readConfig :: FilePath -> IO Config
-readConfig f = do
-  s <- BSL.readFile f
-  return . fromJust $ decode s
+readConfig f = fromJust . decode <$> BSL.readFile f
