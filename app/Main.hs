@@ -22,21 +22,30 @@ run f = do
   runReaderT f config >>= BSL.putStrLn
 
 main = do
+  -- here we still are in the IO monad
   config <- readConfig "./config.json"
-
-  -- runReaderT (buildPathTree pmsdn) config
-  -- runReaderT (searchPath' "Clinical" >>= lsPath' >>= f) config >>= print
-  
   pui <- readFile "pui"
-  let field = (Field {pui=pui, datatype="STRING"})
-      var = Variable {field=field, alias="alias"}
-      whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
 
-  -- debug queries id#
-  n <- runReaderT (query [var] [whereclause]) config
-  putStrLn $ "id: " ++ show n
-  threadDelay 1000000
-  run $ resultStatus n
-  run $ resultStatus (n+1)
+  (`runReaderT` config) $ do
+    -- now we're in the Reader Monad
+
+    -- buildPathTree pmsdn
+    -- searchPath' "" >>= lsPath' >>= print
+    lsPath' "PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Clinical/Allergy/Has The Patient Been Diagnosed With An Allergy To A Specific Medication?/" >>= liftIO . putStrLn . unlines
+    
+    -- let field = (Field {pui=pui, datatype="STRING"})
+    --     var = Variable {field=field, alias="alias"}
+    --     whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
+  
+    -- -- debug queries id#
+    -- n <- query [var] [whereclause]
+
+    -- -- and with liftIO we can do IO things
+    -- liftIO $ do
+    --   putStrLn $ "id: " ++ show n
+    --   threadDelay 1000000
+
+    -- resultStatus n
+    -- resultStatus (n+1)
   
   -- sequence_ (map (run . (\n -> liftIO (print n) >> resultStatus n)) [110..125])

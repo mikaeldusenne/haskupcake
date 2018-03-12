@@ -174,7 +174,7 @@ nice'title s = unlines
   where horiz a b = surround2 a b $ take n $ repeat '─'
           where n = length (head ls') - 2
         f = surround2 "│ " " │"
-        ls' = map f . allToMaxSize ' ' . lines $ s
+        ls' = map f . allToMaxSize ' ' . concatMap (splitEach 150) . lines $ s
 
 intercal :: α -> [α] -> [α]
 intercal _ [] = []
