@@ -53,11 +53,12 @@ This is a simple json file, containing an object that needs to have a `domain` a
 {
 	"domain": "https://your.domain.name",
 	"token": "yourSecretToken",
-	"debug": false  # optional, used to get a more detailed output
+	"debug": false
 }
 ```
 
-it needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.
+it needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.  
+The `debug` attribute is optional, and gives a more detailled output.
 
 ### Reader monad
 
