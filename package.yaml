@@ -43,6 +43,7 @@ library:
     - directory
     - mtl
     - transformers
+    - scientific
 
 executables:
   pic-sure:

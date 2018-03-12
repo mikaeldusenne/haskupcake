@@ -6,6 +6,9 @@ fromJust (Just a) = a
 fromEither (Left e)  = error "error in fromEither!"
 fromEither (Right a) = a
 
+fromLeft (Left e) = e
+fromRight (Right e) = e
+
 isJust (Just _) = True
 isJust _ = False
 

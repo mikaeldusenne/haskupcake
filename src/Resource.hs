@@ -16,18 +16,15 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
 
 urlResourceService = "resourceService"
-urlResources = "resources"
-urlPath = "path"
-urlFind = "find"
+urlResources = urlResourceService </> "resources"
+urlPath = urlResourceService </> "path"
+urlFind = urlResourceService </> "find"
 
-
-picsureGetService = picsureGetWith urlResourceService
-picsureGetService' url = picsureGetService url []
 
 -- |list available services on pic-sure
 listServices :: ReaderT Config IO [String]
-listServices = fmap (unString . Utils.Json.lookup "name") . fromJust
-               <$> picsureGetService' urlResources
+listServices = fmap (unString . Utils.Json.lookup "name") . unArray . fromJust
+               <$> picsureGetRequest' urlResources
 
 -- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
@@ -40,17 +37,17 @@ pathLength = length . splitOn (=='/')
 lsPath :: Bool -> String -> ReaderT Config IO [String]
 lsPath _ "" = listServices
 lsPath relative path = do
-  resp <- picsureGetService' (urlPath </> path)
+  resp <- picsureGetRequest' (urlPath </> path)
   let pui = ( f . unString . Utils.Json.lookup "pui")
         where f = if relative then subStrAfterPath path else Prelude.id
   return $ case resp of Nothing -> []
-                        Just r -> fmap pui $ r
+                        Just r -> fmap pui . unArray $ r
 
 lsPath' = lsPath False
 
 
 findPath term = do
-  resp <- picsureGetService urlFind [("term", term)]
+  resp <- picsureGetRequest urlFind [("term", term)]
   return resp
 
 -- |custom breadth first search

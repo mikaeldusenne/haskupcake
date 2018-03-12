@@ -159,3 +159,19 @@ surround a = surround2 a a
 surroundWith s = (s++) . (++s)
 
 basename = last . filter (not . isEmpty) . splitOn (=='/')
+
+fix'size'side side k e s = f . take k $ s
+  where f = if side==1 then (mappend strfill) else (`mappend` strfill)
+          where strfill = take (max 0 (k-length s)) (repeat e) 
+
+fix'size = fix'size'side 0
+
+allToMaxSize e l = if length l <= 1 then l else map (fix'size k e) l
+  where k = maxSize l
+
+nice'title s = unlines
+  . surround2 [horiz "┌" "┐"] [horiz "└" "┘"] $ ls'
+  where horiz a b = surround2 a b $ take n $ repeat '─'
+          where n = length (head ls') - 2
+        f = surround2 "│ " " │"
+        ls' = map f . allToMaxSize ' ' . lines $ s
