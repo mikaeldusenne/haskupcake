@@ -55,6 +55,9 @@ executables:
     dependencies:
     - haskupcake
     - bytestring
+    - aeson-pretty
+    - unordered-containers
+    - transformers    
 
 tests:
   haskupcake-test:

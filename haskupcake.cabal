@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 310bdd2e2d29914467c4a05c03cba1fda144f3fb3729536740c0e16d954051fe
+-- hash: d885ccc590c06ea0ad6b857999c279692ab43fcaf1a714aeff3a7304a9f7cb23
 
 name:           haskupcake
 version:        0.1.0.0
@@ -69,9 +69,12 @@ executable haskupcake
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson-pretty
+    , base >=4.7 && <5
     , bytestring
     , haskupcake
+    , transformers
+    , unordered-containers
   other-modules:
       Paths_haskupcake
   default-language: Haskell2010
