@@ -1,14 +1,55 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
--- |todo, not used yet, no need to parse all json for now
 module Types where
 
-import GHC.Generics
 import Data.Aeson
-import Control.Applicative
+import qualified Data.HashMap.Strict as M
 import qualified Data.Vector as V
+import qualified Data.Aeson.Encode.Pretty as Pretty
+import GHC.Generics
+
+import qualified Data.Text as T
 
 import Utils.General
+import Utils.Json
 
+data Field = Field {pui :: String,
+                    datatype :: String}
+  deriving (Generic)
+
+
+data Variable = Variable {field :: Field,
+                          alias :: String}
+  deriving (Generic)
+
+
+data Predicate = CONTAINS
+  deriving (Show, Generic)
+
+
+data Where = Where {field :: Field,
+                    predicate :: Predicate,
+                    fields :: M.HashMap String String
+                   }
+  deriving(Generic)
+  
+
+data Query = Query {select :: [Variable], whereClauses :: [Where]}
+
+
+instance ToJSON Predicate where
+  toJSON e = String . T.pack $ show e
+
+instance ToJSON Field 
+instance ToJSON Variable
+instance ToJSON Where 
+
+-- necessity to do an explicit instance because "where" is a reverved keyword
+instance ToJSON Query where
+  toJSON (Query {select=select, whereClauses=whereClause}) =
+    Object . M.fromList
+    . filter ((\(Array v) -> (>0) . V.length $ v) . snd)
+    $ [("select", Array $ V.fromList (map toJSON select)),
+       ("where",  Array $ V.fromList (map toJSON whereClause))]
 
 -- newtype PSResources = PSResources [PSR]
 --   deriving (Show, Generic)

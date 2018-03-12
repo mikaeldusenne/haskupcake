@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, MultiWayIf #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Requester where
 
 import Network.HTTP.Conduit
@@ -49,10 +49,10 @@ logRequest req = do
   putStrLn . nice'title . BS.unpack
     $ BS.concat ["requesting ", method req, " ", host req, path req, queryString req]
   putStrLn $ if method req == "GET"
-                      then "headers: " ++ show (requestHeaders req)
-                      else "body: \n" ++
-                           (\(RequestBodyLBS e) -> BSL.unpack . Pretty.encodePretty . fromJust $ (decode e :: Maybe Value))
-                           (requestBody req)
+             then "headers: " ++ show (requestHeaders req)
+             else "body: \n" ++
+                  (\(RequestBodyLBS e) -> BSL.unpack . Pretty.encodePretty . fromJust $ (decode e :: Maybe Value))
+                  (requestBody req)
   putStrLn "────────────────"
 
 
@@ -85,7 +85,8 @@ picsureRequest url buildf = do
       exceptionHandler e =
         case e of -- 
           (HttpExceptionRequest _ (StatusCodeException c b)) -> 
-            liftIO (putStrLn . intercalate "\n--------\n" $ [show e,show b]) >> f (statusCode . responseStatus $ c)
+            liftIO (putStrLn . concat . afterEach "\n────────────────────────\n" $ [show e,BS.unpack b])
+            >> f (statusCode . responseStatus $ c)
           _ -> retry e
         where -- f :: Int -> ReaderT Config IO (Maybe [Value])
               f codeNb 
@@ -122,17 +123,3 @@ picsurePostRequest url body = do
 
 -- |send a request without parameters
 picsureGetRequest' url = picsureGetRequest url []
-
--- picsureGetWith insert url params = picsureGet (insert </> url) params
--- picsureGetWith' insert url = picsureGetWith insert url []
-
-
-testRequest :: String -> RequestHeaders -> ReaderT Config IO ()
-testRequest url params = do
-  fullUrl <- buildUrl url
-  liftIO $ print fullUrl
-  let f = picsureGetRequest url params >>= (liftIO . display)
-        where display r = print r
-                >> BSL.putStrLn ( Pretty.encodePretty r)
-      g e = liftIO $ print (e :: HttpException)
-  (liftCatch catch) f g

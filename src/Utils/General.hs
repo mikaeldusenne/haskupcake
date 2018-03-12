@@ -1,10 +1,7 @@
 module Utils.General where
 
-fromJust Nothing = error "this is nothingatall"
+fromJust Nothing = error "could not apply fromJust to Nothing"
 fromJust (Just a) = a
-
-fromEither (Left e)  = error "error in fromEither!"
-fromEither (Right a) = a
 
 fromLeft (Left e) = e
 fromRight (Right e) = e
