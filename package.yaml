@@ -1,7 +1,7 @@
 name:                haskupcake
 version:             0.1.0.0
 github:              "mikaunix/haskupcake"
-license:             MIT
+license:             GPL-3
 author:              "Mikaël Dusenne"
 maintainer:          "mikaeldusenne@gmail.com"
 
