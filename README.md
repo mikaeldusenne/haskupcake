@@ -54,6 +54,7 @@ Here are the main modules exposed by haskupcake:
 import PicSure.Config
 import PicSure.Resource
 import PicSure.Query
+import PicSure.Security
 import PicSure.Types
 ```
 
@@ -64,13 +65,15 @@ This is a simple json file, containing an object that needs to have a `domain` a
 ```json
 {
 	"domain": "https://your.domain.name",
+	"debug": false,
 	"token": "yourSecretToken",
-	"debug": false
+	"apiKey": "yourSecretApiKey"
 }
 ```
 
 It needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.  
-The `debug` attribute is optional, and gives a more detailled output.
+The `debug` attribute is optional, and gives a more detailled output.  
+One of `token` or `apiKey` is required. `token` is the default, if it is not specified you will be able to use `PicSure.Security.startSession` with the API key.
 
 ### Reader monad
 
