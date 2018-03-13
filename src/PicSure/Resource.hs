@@ -7,7 +7,7 @@ import System.Directory
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
 
-import PicSure.Utils.General
+import PicSure.Utils.Misc
 import PicSure.Utils.List
 import PicSure.Utils.Trees
 import PicSure.Utils.Json
@@ -26,7 +26,7 @@ listServices :: ReaderT Config IO [String]
 listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray . fromJust
                <$> listResources
 
-listResources = picsureGetRequest' urlResources
+listResources = getRequest' urlResources
 
 -- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
@@ -39,7 +39,7 @@ pathLength = length . splitOn (=='/')
 lsPath :: Bool -> String -> ReaderT Config IO [String]
 lsPath _ "" = listServices
 lsPath relative path = do
-  resp <- picsureGetRequest' (urlPath </> path)
+  resp <- getRequest' (urlPath </> path)
   let pui = ( f . unString . PicSure.Utils.Json.lookup "pui")
         where f = if relative then subStrAfterPath path else Prelude.id
   return $ case resp of Nothing -> []
@@ -49,26 +49,33 @@ lsPath' = lsPath False
 
 
 findPath term = do
-  resp <- picsureGetRequest urlFind [("term", term)]
+  resp <- getRequest urlFind [("term", term)]
   return resp
 
 -- |custom breadth first search
 -- assumes that the tree is acyclic (which it is with pic-sure)
 -- and that the nextf function returns a list of absolute paths
-bfs ::
-  ([Char] -> ReaderT Config IO [String]) -> (String -> Bool) -> String -> ReaderT Config IO (Maybe String)
+bfs :: (String -> IO [String]) -> (String -> Maybe String) -> String -> IO (Maybe String)
 -- todo cleaner / more abstract types?
 bfs nextf checkf startNode = let
-  run [] = return Nothing
-  run (node : nodes)
-    | checkf node = return (Just node)
-    | otherwise   = liftIO (putStrLn node) >>
-                    nextf node >>= (run . (nodes++))
+  run [] = return Nothing  -- found nothing
+  run (node : nodes) = do
+        liftIO $ putStrLn node
+        nexts <- nextf node
+        let f acc e = acc `mplus` checkf e
+        case (foldl f Nothing nexts) of
+          Nothing -> run $ nodes++nexts
+          n -> return $ (node</>) <$> n
   in run [startNode]
 
 -- |search a specific <node>, starting at the absolute path <from>
 searchPath :: String -> String -> ReaderT Config IO (Maybe String)
-searchPath node from = bfs lsPath' ((==node) . pathdirname) from
+searchPath node from = do
+  let checkf = ((\n -> if n == node then Just n else Nothing) . pathdirname)
+  case checkf from of
+    Nothing -> do c <- ask
+                  liftIO $ bfs ((`runReaderT` c) . lsPath') checkf from
+    n -> return n
 
 -- |search in all the available resources
 searchPath' node = searchPath node ""

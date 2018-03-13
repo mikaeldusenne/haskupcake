@@ -1,7 +1,7 @@
 module PicSure.Utils.List where
 
 import Data.List
-import PicSure.Utils.General
+import PicSure.Utils.Misc
 
 ---------------------------------------------------
 {- SAFE -}

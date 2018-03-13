@@ -9,8 +9,9 @@ import GHC.Generics
 
 import qualified Data.Text as T
 
-import PicSure.Utils.General
+import PicSure.Utils.Misc
 import PicSure.Utils.Json
+
 
 data Field = Field {pui :: String,
                     dataType :: String}
@@ -23,7 +24,10 @@ data Variable = Variable {field :: Field,
 
 
 data Predicate = CONTAINS
-  deriving (Show, Generic)
+  deriving (Show)
+
+data LogicalOperator = OR | AND
+  deriving (Show)
 
 
 data Where = Where {field :: Field,
@@ -37,6 +41,9 @@ data Query = Query {select :: [Variable], whereClauses :: [Where]}
 
 
 instance ToJSON Predicate where
+  toJSON e = String . T.pack $ show e
+
+instance ToJSON LogicalOperator where
   toJSON e = String . T.pack $ show e
 
 instance ToJSON Field 

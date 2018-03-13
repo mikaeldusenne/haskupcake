@@ -6,7 +6,7 @@ TAGS
 tree*
 data
 logs
-config.json
+config*.json
 /*.csv
 test/TestResults.hs
 ignore

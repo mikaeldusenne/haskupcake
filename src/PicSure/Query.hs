@@ -17,7 +17,7 @@ import Data.Scientific
 
 import PicSure.Utils.Paths
 import PicSure.Utils.List
-import PicSure.Utils.General
+import PicSure.Utils.Misc
 import PicSure.Utils.Json
 import PicSure.Requester
 import PicSure.Config
@@ -37,11 +37,11 @@ query cols whereClause = do
   let body = encode $ Query {select=cols, whereClauses=whereClause}
       extract o = PicSure.Utils.Json.lookup "resultId" o
   -- liftIO $ BSL.putStrLn body
-  fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) <$> picsurePostRequest urlRunQuery body
+  fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) <$> postRequest urlRunQuery body
 
 -- resultStatus :: Integral n => [Variable] -> [Where] -> ReaderT Config IO n
-resultStatus n = Pretty.encodePretty <$> picsureGetRequest (urlResultStatus</>show n) []
+resultStatus n = Pretty.encodePretty <$> getRequest (urlResultStatus</>show n) []
 
-resultAvailableFormats n = Pretty.encodePretty <$> picsureGetRequest (urlAvailableFormats </>show n) []
+resultAvailableFormats n = Pretty.encodePretty <$> getRequest (urlAvailableFormats</>show n) []
 
-resultDownload n format = picsureGetRequest (urlResultDownload</>show n</>format) []
+resultDownload n format = getRequest (urlResultDownload</>show n</>format) []

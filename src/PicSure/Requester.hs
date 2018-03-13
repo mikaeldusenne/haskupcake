@@ -4,6 +4,7 @@ module PicSure.Requester where
 import Network.HTTP.Conduit
 -- import Network.HTTP.Client
 import Network.HTTP.Types
+import Network.HTTP.Types.URI
 import qualified Network.URI.Encode as URI
 
 import Data.Aeson
@@ -20,24 +21,21 @@ import Control.Exception
 import Data.Monoid ((<>))
 import Control.Monad
 import Control.Applicative
-import Data.CaseInsensitive
+import qualified Data.CaseInsensitive as CI
 import Data.List
 
 import Data.List (foldl')
 import System.IO
 
 import PicSure.Config
+import PicSure.Utils.Misc
 import PicSure.Utils.Paths
-import PicSure.Utils.General
 import PicSure.Utils.List
+
+data PostGet = Params [(BS.ByteString, BS.ByteString)] | Body RequestBody
 
 urlApi = "rest/v1"
 
-load :: String -> ReaderT Config IO String
-load s = do
-  config <- ask
-  return $ token config
-  
 -- |split url on '/', encode each part, and join them back
 encodeUrlPath = foldl' (</>) "" . (URI.encode <$>) . splitOn (=='/')
 
@@ -49,25 +47,30 @@ logRequest req = do
   putStrLn "────────────────"
   putStrLn . nice'title . BS.unpack
     $ BS.concat ["requesting ", method req, " ", host req, path req, queryString req]
-  putStrLn $ if method req == "GET"
-             then "headers: " ++ show (requestHeaders req)
-             else "body: \n" ++
-                  (\(RequestBodyLBS e) -> BSL.unpack . Pretty.encodePretty . fromJust $ (decode e :: Maybe Value))
-                  (requestBody req)
+  when (method req /= "GET") $ putStrLn $ 
+    "body: \n" ++
+    (\(RequestBodyLBS e) -> BSL.unpack . Pretty.encodePretty . fromJust $ (decode e :: Maybe Value))
+    (requestBody req)
   putStrLn "────────────────"
 
 
 -- |No http error handling
-picsureRequest' :: String -> (Request -> Request) -> ReaderT Config IO (Response BSL.ByteString)
-picsureRequest' url buildf = do
+request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
+request' url postget = do
   config <- ask
   fullUrl <- buildUrl url
-  let tok = BS.pack . ("bearer "<>) $ token config -- prepare for GET parameter
-      setRequestOptions r = r {requestHeaders = requestHeaders r ++ [("Authorization", tok)],
-                               responseTimeout = responseTimeoutNone}
+  let tokparam = case auth config of
+        Token t -> [("Authorization", BS.pack ("bearer " <> t))]
+        _ -> []
+      -- setRequestOptions r = r {queryString = renderQuery True . map (applyToSnd Just) $ tokparam ++ (requestHeaders r),
+      --                          responseTimeout = responseTimeoutNone}
+      applyPostGet req = case postget of
+        (Params l) -> req{ queryString = rq $ l , method = "GET"}
+        (Body   b) -> req{ requestBody = b,       method = "POST"}
+        where rq = renderQuery True . map (applyToSnd Just)
   runResourceT $ do
     manager <- liftIO $ newManager tlsManagerSettings
-    req <- liftIO $ setRequestOptions . buildf <$> parseUrlThrow fullUrl
+    req <- liftIO $ applyPostGet . (\r -> r{requestHeaders=tokparam}) <$> parseUrlThrow fullUrl
     when (debug config) . liftIO $ logRequest req
     -- liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
     httpLbs req manager
@@ -77,8 +80,8 @@ picsureRequest' url buildf = do
 -- HTTP 500 errors are logged and skipped
 -- HTTP 401 (unauthorized) are thrown (token needs to be refreshed)
 -- for other errors, wait a bit and retry (for unstable connexions)
-picsureRequest :: String -> (Request -> Request) -> ReaderT Config IO (Maybe Value)
-picsureRequest url buildf = do
+request :: String -> PostGet -> ReaderT Config IO (Maybe Value)
+request url postget = do
   -- we're in the Reader Monad, `ask` gives us the environment, ie the Config value
   c <- ask
   fullUrl <- buildUrl url
@@ -92,7 +95,7 @@ picsureRequest url buildf = do
         where -- f :: Int -> ReaderT Config IO (Maybe [Value])
               f codeNb 
                 | codeNb `elem` [500] = liftIO (handleError codeNb) -- throw e -- give up on those error codes
-                | codeNb `elem` [401] = throw e
+                | codeNb `elem` [401, 404] = throw e
                 | otherwise = retry e
                 
               -- handleError :: Int -> IO (Maybe [Value])
@@ -101,26 +104,23 @@ picsureRequest url buildf = do
                               return Nothing
 
               -- retry :: HttpException -> ReaderT Config IO (Maybe [Value])
-              retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> picsureRequest url buildf
+              retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
 
       -- get :: ReaderT Config IO (Maybe [Value])
-      get = decode . responseBody <$> picsureRequest' url buildf
+      get = decode . responseBody <$> request' url postget
       
   (liftCatch catch) get exceptionHandler
 
 -- |send a GET request to the pic-sure api
 -- the provided url will be appened to the root api url,
 -- aka https://<domain>/rest/v1/
-picsureGetRequest :: String -> RequestHeaders -> ReaderT Config IO (Maybe Value)
-picsureGetRequest url params = do
-  picsureRequest url (\r -> r {requestHeaders = params})
+getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> ReaderT Config IO (Maybe Value)
+getRequest url params = request url (Params params)
 
 -- |POST request
-picsurePostRequest :: String -> BSL.ByteString -> ReaderT Config IO (Maybe Value)
--- todo: unify GET / POST functions with the use of Request directly instead of params / body arguments
-picsurePostRequest url body = do
-  picsureRequest url (\r -> r{method = "POST",
-                              requestBody = RequestBodyLBS body})
+postRequest :: String -> BSL.ByteString -> ReaderT Config IO (Maybe Value)
+postRequest url body = request url (Body $ RequestBodyLBS body)
 
 -- |send a request without parameters
-picsureGetRequest' url = picsureGetRequest url []
+getRequest' url = getRequest url []
+

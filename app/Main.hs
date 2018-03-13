@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Control.Concurrent (threadDelay)
@@ -26,33 +25,28 @@ run f = do
 main = do
   -- here we still are in the IO monad
   config <- readConfig "./config.json"
-  pui <- readFile "pui"
-
+  -- pui <- readFile "pui"
+  let pui = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female"
   -- (`runReaderT` config) $ do
     -- now we're in the Reader Monad
-  
-  l <- run $ do
-    paths <- lsPath' ""
-    liftIO $ print paths
-    lsPath' $ head paths
-  print l
+  run $ do
     -- buildPathTree pmsdn
     -- searchPath' "" >>= lsPath' >>= print
     -- listResources >>= liftIO . BSL.putStrLn . Pretty.encodePretty
     
-    -- let field = (Field {pui=pui, dataType="STRING"})
-    --     vars = [Variable {field=field, alias="first_alias"}]
-    --     whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
+    let field = (Field {pui=pui, dataType="STRING"})
+        vars = [Variable {field=field, alias="first_alias"}]
+        whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
     
-    -- -- debug queries id#
-    -- n <- query vars [whereclause]
+    -- debug queries id#
+    n <- query vars [whereclause]
 
-    -- -- and with liftIO we can do IO things
-    -- liftIO $ do
-    --   putStrLn $ "id: " ++ show n
-    --   threadDelay 1000000
+    -- and with liftIO we can do IO things
+    liftIO $ do
+      putStrLn $ "id: " ++ show n
+      threadDelay 1000000
 
-    -- resultStatus n
+    resultStatus n
     -- resultStatus (n+1)
   
   -- sequence_ (map (run . (\n -> liftIO (print n) >> resultStatus n)) [110..125])

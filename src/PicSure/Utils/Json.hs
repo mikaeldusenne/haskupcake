@@ -4,7 +4,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Aeson
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import PicSure.Utils.General
+import PicSure.Utils.Misc
 
 
 lookup :: T.Text -> Value -> Value
