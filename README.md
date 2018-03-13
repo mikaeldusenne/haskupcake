@@ -60,7 +60,7 @@ import PicSure.Types
 
 ### JSON configuration file
 
-This is a simple json file, containing an object that needs to have a `domain` and a `token` attribute:
+This is a simple json file, containing an object that needs to have a `domain` and a `token` attribute, or an `apiKey`:
 
 ```json
 {
