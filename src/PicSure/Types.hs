@@ -1,11 +1,14 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields, RecordWildCards, LambdaCase#-}
 module PicSure.Types where
 
+import Network.HTTP.Conduit
+import Network.HTTP.Types(Header)
 import Data.Aeson
 import qualified Data.HashMap.Strict as M
 import qualified Data.Vector as V
 import qualified Data.Aeson.Encode.Pretty as Pretty
 import GHC.Generics
+import qualified Data.ByteString.Char8 as BS
 
 import qualified Data.Text as T
 
@@ -57,6 +60,31 @@ instance ToJSON Query where
     . filter ((\(Array v) -> (>0) . V.length $ v) . snd)
     $ [("select", Array $ V.fromList (map toJSON select)),
        ("where",  Array $ V.fromList (map toJSON whereClause))]
+
+
+data Auth = ApiKey String | Token String
+  deriving (Show)
+
+data Config = Config {
+  domain :: String,
+  auth :: Auth,
+  debug :: Bool,
+  sessionCookies :: Maybe CookieJar
+  }
+  deriving (Show)
+
+instance FromJSON Config where
+  parseJSON = withObject "config" $ \o -> do
+    domain  <- o .:  "domain"
+    debug   <- o .:? "debug"  .!= False
+    auth    <- o .:?  "token" >>= \case
+      Just t -> return $ Token t
+      Nothing -> o .:?  "apiKey" >>= \case
+        Just k -> return $ ApiKey k
+        Nothing -> error "no authentication method found in config"
+    let sessionCookies = Nothing
+    return Config{..}
+
 
 -- newtype PSResources = PSResources [PSR]
 --   deriving (Show, Generic)

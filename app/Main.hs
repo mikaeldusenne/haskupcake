@@ -19,14 +19,14 @@ import PicSure.Types
 
 run :: ReaderT Config IO b -> IO b
 run f = do
-  config <- readConfig "./config.json"
+  config <- readConfig "./config_.json"
   runReaderT f config
 
 main = do
   -- here we still are in the IO monad
   config <- readConfig "./config.json"
   -- pui <- readFile "pui"
-  let pui = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female"
+  let pui = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female/"
   -- (`runReaderT` config) $ do
     -- now we're in the Reader Monad
   run $ do
@@ -34,10 +34,10 @@ main = do
     -- searchPath' "" >>= lsPath' >>= print
     -- listResources >>= liftIO . BSL.putStrLn . Pretty.encodePretty
     
-    let field = (Field {pui=pui, dataType="STRING"})
+    let field = Field {pui=pui, dataType="STRING"}
         vars = [Variable {field=field, alias="first_alias"}]
         whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
-    
+
     -- debug queries id#
     n <- query vars [whereclause]
 
@@ -47,6 +47,6 @@ main = do
       threadDelay 1000000
 
     resultStatus n
-    -- resultStatus (n+1)
+    resultStatus (n+1)
   
   -- sequence_ (map (run . (\n -> liftIO (print n) >> resultStatus n)) [110..125])

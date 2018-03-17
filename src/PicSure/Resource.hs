@@ -3,6 +3,7 @@ module PicSure.Resource where
 
 import Control.Monad
 import System.Directory
+import Data.Foldable
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
@@ -12,7 +13,7 @@ import PicSure.Utils.List
 import PicSure.Utils.Trees
 import PicSure.Utils.Json
 import PicSure.Utils.Paths
-import PicSure.Config
+import PicSure.Types
 import PicSure.Requester
 
 urlResourceService = "resourceService"
@@ -82,23 +83,22 @@ searchPath' node = searchPath node ""
 
 -------- tests --------
 
--- completedFile = "data/.completed"
+completedFile = "data/.completed"
 
 -- -- |reproduces the data tree in the file system by creating a directory for each item
 -- -- this is for testing purposes, the amount of HTTP requests needed if way to high and
 -- -- this takes ages to complete.
--- buildPathTree :: [Char] -> ReaderT Config IO ()
--- buildPathTree fromNode = do
---   let go !completed node = do -- bangpattern needed to enforce strictness of reading (file locked error)
---         let dirname = "data" </> node
---             isNotComplete = not $ elem node completed
---         liftIO $ putStrLn ((take (pathLength node - 1) $ repeat ' ') ++ show (pathLength node) ++ (pathdirname node)) -- just being fancy
---         when ((pathLength node <= 8) && isNotComplete) $ do
---           liftIO $ createDirectoryIfMissing True dirname
---           lsPath True node >>= traverse (go completed . (node</>))
---           return ()
---           -- >> appendFile completedFile (node++"\n")
---           -- >> hPutStrLn h (node ++ "\n"))
---           -- >>= (return . (node:) . concat))  
---   completed <- lines <$> (liftIO $ readFile completedFile)
---   go completed fromNode
+buildPathTree :: [Char] -> ReaderT Config IO ()
+buildPathTree fromNode = do
+  let go !completed node = do -- bangpattern needed to enforce strictness of reading (file locked error)
+        let dirname = "data" </> node
+            isNotComplete = True -- not $ elem node completed
+        liftIO $ putStrLn ((take (pathLength node - 1) $ repeat ' ') ++ show (pathLength node) ++ (pathdirname node)) -- just being fancy
+        when ((pathLength node <= 18) && isNotComplete) $ do
+          liftIO $ createDirectoryIfMissing True dirname
+          lsPath True node >>= traverse_ (go completed . (node</>))
+          -- >> appendFile completedFile (node++"\n")
+          -- >> hPutStrLn h (node ++ "\n"))
+          -- >>= (return . (node:) . concat))  
+  completed <- lines <$> (liftIO $ readFile completedFile)
+  go completed fromNode

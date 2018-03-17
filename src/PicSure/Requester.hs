@@ -27,10 +27,10 @@ import Data.List
 import Data.List (foldl')
 import System.IO
 
-import PicSure.Config
 import PicSure.Utils.Misc
 import PicSure.Utils.Paths
 import PicSure.Utils.List
+import PicSure.Types
 
 data PostGet = Params [(BS.ByteString, BS.ByteString)] | Body RequestBody
 
@@ -59,18 +59,28 @@ request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
 request' url postget = do
   config <- ask
   fullUrl <- buildUrl url
+  liftIO $ print config
   let tokparam = case auth config of
         Token t -> [("Authorization", BS.pack ("bearer " <> t))]
         _ -> []
+        -- ApiKey k -> [("key", BS.pack k)]
       -- setRequestOptions r = r {queryString = renderQuery True . map (applyToSnd Just) $ tokparam ++ (requestHeaders r),
       --                          responseTimeout = responseTimeoutNone}
       applyPostGet req = case postget of
-        (Params l) -> req{ queryString = rq $ l , method = "GET"}
+        (Params l) -> req{ queryString = (rq $ l)
+                         --  `BS.append` cookies
+                         , method = "GET"}
         (Body   b) -> req{ requestBody = b,       method = "POST"}
         where rq = renderQuery True . map (applyToSnd Just)
-  runResourceT $ do
+              -- cookies :: BS.ByteString
+              -- cookies = case sessionCookies config of
+              --             Nothing -> mempty
+              --             Just jar -> BS.pack . intercalate "&" . map ("Cookie: "++) $ map (\(a, b) -> a ++ "=" ++ b) $ bs
+      
+  runResourceT $ do 
     manager <- liftIO $ newManager tlsManagerSettings
-    req <- liftIO $ applyPostGet . (\r -> r{requestHeaders=tokparam}) <$> parseUrlThrow fullUrl
+    req <- liftIO $ applyPostGet . (\r -> r{requestHeaders=tokparam,
+                                           cookieJar = sessionCookies config }) <$> parseUrlThrow fullUrl
     when (debug config) . liftIO $ logRequest req
     -- liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
     httpLbs req manager
