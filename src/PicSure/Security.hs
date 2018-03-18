@@ -13,6 +13,7 @@ import PicSure.Requester
 import PicSure.Utils.Paths
 import PicSure.Utils.List
 import PicSure.Types
+import Data.Time.Clock
 
 urlSecurityService = "securityService"
 
@@ -25,15 +26,16 @@ endSession    = f "endSession"
 -- startSession :: ReaderT Config IO b
 startSession :: ReaderT Config IO (Maybe CookieJar)
 startSession  = do
-  return Nothing
+  time <- liftIO getCurrentTime
+  -- return Nothing
   -- liftIO $ putStrLn "Authenticating with API key..."
   
-  -- (auth <$> ask) >>= \case
-  --   Token _ -> return Nothing
-  --   ApiKey k -> do
-  --     resp <- request' (urlSecurityService</>"startSession") (Params [("key", BS.pack k)])
-  --     liftIO $ print resp
-  --     -- let cookie = responseCookieJar resp
-  --     let cookies = map ((read :: String -> Cookie). BS.unpack .snd) . filter ((=="Set-Cookie") . fst) $ responseHeaders resp
-  --     return . Just $ createCookieJar cookies
+  (auth <$> ask) >>= \case
+    Token _ -> return Nothing
+    ApiKey k -> do
+      resp <- request' (urlSecurityService</>"startSession") (Params [("key", BS.pack k)])
+      liftIO $ print resp
+      let cj = responseCookieJar resp
+      -- let cookies = map ((read :: String -> Cookie). BS.unpack .snd) . filter ((=="Set-Cookie") . fst) $ responseHeaders resp
+      return . Just $ cj
 

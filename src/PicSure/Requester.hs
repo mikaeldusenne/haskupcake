@@ -86,7 +86,9 @@ request' url postget = do
            secure = True}) <$> (parseUrlThrow $ domain config)
     when (debug config) . liftIO $ logRequest req
     -- liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
-    httpLbs req $ manager config
+    resp <- httpLbs req $ manager config
+    responseClose resp -- needed?
+    return $ resp
 
 
 -- |returns the body of the request encoded with Aeson if all went well.

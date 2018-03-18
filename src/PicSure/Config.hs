@@ -13,7 +13,6 @@ import PicSure.Types
 import PicSure.Security
 import PicSure.ConnexionManager
 
-
 readConfig :: FilePath -> IO Config
 readConfig f = do
   c <- fromJust . decode <$> BSL.readFile f
