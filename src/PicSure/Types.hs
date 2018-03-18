@@ -62,7 +62,7 @@ instance ToJSON Query where
        ("where",  Array $ V.fromList (map toJSON whereClause))]
 
 
-data Auth = ApiKey String | Token String
+data Auth = Token {runToken :: String}
   deriving (Show)
 
 data Config = Config {
@@ -82,9 +82,7 @@ instance FromJSON Config where
     debug   <- o .:? "debug"  .!= False
     auth    <- o .:?  "token" >>= \case
       Just t -> return $ Token t
-      Nothing -> o .:?  "apiKey" >>= \case
-        Just k -> return $ ApiKey k
-        Nothing -> error "no authentication method found in config"
+      Nothing -> error "no authentication method found in config"
     let sessionCookies = Nothing
         manager = undefined -- disgustingly ugly?
     return Config{..}

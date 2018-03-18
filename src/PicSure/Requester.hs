@@ -59,33 +59,19 @@ logRequest req = do
 request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
 request' url postget = do
   config <- ask
-  -- fullUrl <- buildUrl url
-  liftIO $ print config
-  let tokparam = case auth config of
-        Token t -> [("Authorization", BS.pack ("bearer " <> t))]
-        _ -> []
-        -- ApiKey k -> [("key", BS.pack k)]
-      -- setRequestOptions r = r {queryString = renderQuery True . map (applyToSnd Just) $ tokparam ++ (requestHeaders r),
-      --                          responseTimeout = responseTimeoutNone}
+  let tokparam = [("Authorization", BS.pack ("bearer " <> (runToken $ auth config)))]
       applyPostGet req = case postget of
         (Params l) -> req{ queryString = (rq $ l)
-                         --  `BS.append` cookies
                          , method = "GET"}
-        (Body   b) -> req{ requestBody = b,       method = "POST"}
+        (Body   b) -> req{ requestBody = b, method = "POST"}
         where rq = renderQuery True . map (applyToSnd Just)
-              -- cookies :: BS.ByteString
-              -- cookies = case sessionCookies config of
-              --             Nothing -> mempty
-              --             Just jar -> BS.pack . intercalate "&" . map ("Cookie: "++) $ map (\(a, b) -> a ++ "=" ++ b) $ bs
   liftIO $ do
     req <- applyPostGet . (\r -> r
           {requestHeaders=tokparam,
-           cookieJar = sessionCookies config,
            path = BS.pack $ urlApi </> encodeUrlPath url,
            port = 443,
            secure = True}) <$> (parseUrlThrow $ domain config)
     when (debug config) . liftIO $ logRequest req
-    -- liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
     resp <- httpLbs req $ manager config
     responseClose resp -- needed?
     return $ resp
