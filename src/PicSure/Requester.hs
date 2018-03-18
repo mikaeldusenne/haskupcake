@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module PicSure.Requester where
 
-import Network.HTTP.Conduit
+import Network.HTTP.Client
+import Network.HTTP.Client.TLS
 -- import Network.HTTP.Client
 import Network.HTTP.Types
 import Network.HTTP.Types.URI
@@ -40,7 +41,7 @@ urlApi = "rest/v1"
 encodeUrlPath = foldl' (</>) "" . (URI.encode <$>) . splitOn (=='/')
 
 -- | adds the root path to api for building requests
-buildUrl url = ((</> (urlApi </> encodeUrlPath url)) . domain) <$> ask
+-- buildUrl url = ((</> (urlApi </> encodeUrlPath url)) . domain) <$> ask
 
 -- |a better 'show' function for Request objects
 logRequest req = do
@@ -58,7 +59,7 @@ logRequest req = do
 request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
 request' url postget = do
   config <- ask
-  fullUrl <- buildUrl url
+  -- fullUrl <- buildUrl url
   liftIO $ print config
   let tokparam = case auth config of
         Token t -> [("Authorization", BS.pack ("bearer " <> t))]
@@ -76,14 +77,16 @@ request' url postget = do
               -- cookies = case sessionCookies config of
               --             Nothing -> mempty
               --             Just jar -> BS.pack . intercalate "&" . map ("Cookie: "++) $ map (\(a, b) -> a ++ "=" ++ b) $ bs
-      
-  runResourceT $ do 
-    manager <- liftIO $ newManager tlsManagerSettings
-    req <- liftIO $ applyPostGet . (\r -> r{requestHeaders=tokparam,
-                                           cookieJar = sessionCookies config }) <$> parseUrlThrow fullUrl
+  liftIO $ do
+    req <- applyPostGet . (\r -> r
+          {requestHeaders=tokparam,
+           cookieJar = sessionCookies config,
+           path = BS.pack $ urlApi </> encodeUrlPath url,
+           port = 443,
+           secure = True}) <$> (parseUrlThrow $ domain config)
     when (debug config) . liftIO $ logRequest req
     -- liftIO $ (\(RequestBodyLBS s) -> BSL.putStrLn s) $ requestBody req
-    httpLbs req manager
+    httpLbs req $ manager config
 
 
 -- |returns the body of the request encoded with Aeson if all went well.
@@ -94,7 +97,6 @@ request :: String -> PostGet -> ReaderT Config IO (Maybe Value)
 request url postget = do
   -- we're in the Reader Monad, `ask` gives us the environment, ie the Config value
   c <- ask
-  fullUrl <- buildUrl url
   let -- exceptionHandler :: HttpException -> ReaderT Config IO (Maybe [Value])
       exceptionHandler e =
         case e of -- 
@@ -110,7 +112,7 @@ request url postget = do
                 
               -- handleError :: Int -> IO (Maybe [Value])
               handleError n = -- (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n") >>
-                              print fullUrl >> print url >>
+                              print (domain c) >> print url >>
                               return Nothing
 
               -- retry :: HttpException -> ReaderT Config IO (Maybe [Value])

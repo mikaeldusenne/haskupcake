@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields, RecordWildCards, LambdaCase#-}
 module PicSure.Types where
 
-import Network.HTTP.Conduit
+import Network.HTTP.Client
 import Network.HTTP.Types(Header)
 import Data.Aeson
 import qualified Data.HashMap.Strict as M
@@ -69,9 +69,12 @@ data Config = Config {
   domain :: String,
   auth :: Auth,
   debug :: Bool,
-  sessionCookies :: Maybe CookieJar
+  sessionCookies :: Maybe CookieJar,
+  manager :: Manager
   }
-  deriving (Show)
+
+instance Show Config where
+  show (Config{domain=d, auth=auth}) = show d ++ " - " ++ show auth
 
 instance FromJSON Config where
   parseJSON = withObject "config" $ \o -> do
@@ -83,6 +86,7 @@ instance FromJSON Config where
         Just k -> return $ ApiKey k
         Nothing -> error "no authentication method found in config"
     let sessionCookies = Nothing
+        manager = undefined -- disgustingly ugly?
     return Config{..}
 
 

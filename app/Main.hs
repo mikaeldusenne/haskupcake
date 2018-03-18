@@ -19,7 +19,7 @@ import PicSure.Types
 
 run :: ReaderT Config IO b -> IO b
 run f = do
-  config <- readConfig "./config_.json"
+  config <- readConfig "./config.json"
   runReaderT f config
 
 main = do

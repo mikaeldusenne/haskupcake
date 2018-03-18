@@ -24,7 +24,8 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-    - http-conduit
+    - http-client
+    - http-client-tls
     - bytestring
     - conduit
     - resourcet
