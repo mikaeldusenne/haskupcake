@@ -60,20 +60,19 @@ import PicSure.Types
 
 ### JSON configuration file
 
-This is a simple json file, containing an object that needs to have a `domain` and a `token` attribute, or an `apiKey`:
+This is a simple json file, containing an object that needs to have a `domain` and a `token` attribute:
 
 ```json
 {
 	"domain": "https://your.domain.name",
 	"debug": false,
 	"token": "yourSecretToken",
-	"apiKey": "yourSecretApiKey"
 }
 ```
 
 It needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.  
 The `debug` attribute is optional, and gives a more detailled output.  
-One of `token` or `apiKey` is required. `token` is the default, if it is not specified you will be able to use `PicSure.Security.startSession` with the API key.
+`token` is required (api key authentication is not supported)
 
 ### Reader monad
 
