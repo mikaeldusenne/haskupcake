@@ -22,21 +22,22 @@ run f = do
   config <- readConfig "./config.json"
   runReaderT f config
 
+puistr = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female/"
+fieldstr = Field {pui=puistr, dataType="STRING"}
+vars = [Variable {field=fieldstr, alias="first_alias"}]
+whereclause = Where {field = fieldstr, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
+
+
 main = do
   -- here we still are in the IO monad
   config <- readConfig "./config.json"
   -- pui <- readFile "pui"
-  let pui = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female/"
   -- (`runReaderT` config) $ do
     -- now we're in the Reader Monad
   run $ do
     -- buildPathTree pmsdn
     -- searchPath' "" >>= lsPath' >>= print
     -- listResources >>= liftIO . BSL.putStrLn . Pretty.encodePretty
-    
-    let field = Field {pui=pui, dataType="STRING"}
-        vars = [Variable {field=field, alias="first_alias"}]
-        whereclause = Where {field = field, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
 
     -- debug queries id#
     n <- query vars [whereclause]

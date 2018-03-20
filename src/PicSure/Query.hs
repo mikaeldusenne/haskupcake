@@ -40,6 +40,7 @@ query cols whereClause = do
   fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) <$> postRequest urlRunQuery body
 
 -- resultStatus :: Integral n => [Variable] -> [Where] -> ReaderT Config IO n
+resultStatus :: Show a => a -> ReaderT Config IO BSL.ByteString
 resultStatus n = Pretty.encodePretty <$> getRequest (urlResultStatus</>show n) []
 
 resultAvailableFormats n = Pretty.encodePretty <$> getRequest (urlAvailableFormats</>show n) []

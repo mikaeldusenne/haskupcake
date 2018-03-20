@@ -9,7 +9,6 @@ import Network.HTTP.Types.URI
 import qualified Network.URI.Encode as URI
 
 import Data.Aeson
-import qualified Data.Aeson.Encode.Pretty as Pretty
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.ByteString.Char8 as BS
 import Data.Conduit
@@ -31,7 +30,9 @@ import System.IO
 import PicSure.Utils.Misc
 import PicSure.Utils.Paths
 import PicSure.Utils.List
+import PicSure.Utils.Json
 import PicSure.Types
+
 
 data PostGet = Params [(BS.ByteString, BS.ByteString)] | Body RequestBody
 
@@ -46,11 +47,12 @@ encodeUrlPath = foldl' (</>) "" . (URI.encode <$>) . splitOn (=='/')
 -- |a better 'show' function for Request objects
 logRequest req = do
   putStrLn "────────────────"
-  putStrLn . nice'title . BS.unpack
-    $ BS.concat ["requesting ", method req, " ", host req, path req, queryString req]
+  putStrLn . nice'title
+    . (("requesting " ++ (BS.unpack $ method req)) ++) . (" "++)
+    . foldl (</>) "" $ map (BS.unpack) [ host req, path req, queryString req]
   when (method req /= "GET") $ putStrLn $ 
     "body: \n" ++
-    (\(RequestBodyLBS e) -> BSL.unpack . Pretty.encodePretty . fromJust $ (decode e :: Maybe Value))
+    (\(RequestBodyLBS e) -> BSL.unpack . prettyJson . (decode :: BSL.ByteString -> Maybe Value) $ e)
     (requestBody req)
   putStrLn "────────────────"
 

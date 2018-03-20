@@ -1,5 +1,7 @@
 module PicSure.Utils.Json where
 
+import qualified Data.Aeson.Encode.Pretty as Pretty
+import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.HashMap.Strict as HM
 import Data.Aeson
 import qualified Data.Text as T
@@ -18,3 +20,7 @@ unNumber (Number n) = n
 unArray (Array a) = V.toList a
 
 stringToValue = String . T.pack
+
+
+prettyJson :: Maybe Value -> BSL.ByteString
+prettyJson = Pretty.encodePretty . fromJust

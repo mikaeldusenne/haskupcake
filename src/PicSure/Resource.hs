@@ -8,6 +8,8 @@ import Data.Foldable
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
 
+import qualified Data.ByteString.Lazy.Char8 as BSL
+
 import PicSure.Utils.Misc
 import PicSure.Utils.List
 import PicSure.Utils.Trees
@@ -20,6 +22,12 @@ urlResourceService = "resourceService"
 urlResources = urlResourceService </> "resources"
 urlPath = urlResourceService </> "path"
 urlFind = urlResourceService </> "find"
+urlSystemService = "systemService"
+urlAbout = urlSystemService </> "about"
+
+
+about :: ReaderT Config IO BSL.ByteString
+about = prettyJson <$> getRequest' urlAbout
 
 
 -- |list available services on pic-sure
