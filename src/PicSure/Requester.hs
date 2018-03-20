@@ -13,7 +13,8 @@ import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.ByteString.Char8 as BS
 import Data.Conduit
 -- import Data.Conduit.Binary (sinkFile)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class
+-- import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Resource
 import Control.Concurrent (threadDelay)
@@ -34,7 +35,6 @@ import PicSure.Utils.Json
 import PicSure.Types
 
 
-data PostGet = Params [(BS.ByteString, BS.ByteString)] | Body RequestBody
 
 urlApi = "rest/v1"
 
@@ -58,8 +58,9 @@ logRequest req = do
 
 
 -- |No http error handling
-request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
-request' url postget = do
+-- request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
+request' :: String -> PostGet -> (Response BodyReader -> IO b) -> ReaderT Config IO b
+request' url postget action = do
   config <- ask
   let tokparam = [("Authorization", BS.pack ("bearer " <> (runToken $ auth config)))]
       applyPostGet req = case postget of
@@ -74,9 +75,10 @@ request' url postget = do
            port = 443,
            secure = True}) <$> (parseUrlThrow $ domain config)
     when (debug config) . liftIO $ logRequest req
-    resp <- httpLbs req $ manager config
-    responseClose resp -- needed?
-    return $ resp
+    withResponse req (manager config) action
+    -- resp <- httpLbs req $ manager config
+    -- responseClose resp -- needed?
+    -- return $ resp
 
 
 -- |returns the body of the request encoded with Aeson if all went well.
@@ -109,8 +111,7 @@ request url postget = do
               retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
 
       -- get :: ReaderT Config IO (Maybe [Value])
-      get = decode . responseBody <$> request' url postget
-      
+      get = decode . BSL.fromChunks <$> request' url postget (brConsume . responseBody)
   (liftCatch catch) get exceptionHandler
 
 -- |send a GET request to the pic-sure api

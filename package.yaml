@@ -45,6 +45,8 @@ library:
     - transformers
     - scientific
     - time
+    - MissingH
+    - parsec
 
 executables:
   haskupcake:

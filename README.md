@@ -140,6 +140,9 @@ Use it with a bit of patience at hand, because one HTTP request has to be perfor
 
 the `query` function takes a list of `Variable`, a list of `Where` clauses, and builds a JSON body out of them and sends it to PIC-SURE's runQuery. Thoses types are defined in the `PicSure.Type` module.
 
-You'll get back a query ID, which you can use with `resultStatus`, `resultAvailableformats` and `resultDownload`.
+You'll get back a query ID, which you can use with `resultStatus`, `resultAvailableformats`, `resultFetch` and `resultDownload`.
 
-(this part is still a WIP)
+`ResultFetch` returns a `Either Text.Parsec.Error.ParseError [[String]]`. it uses [Data.CSV](https://hackage.haskell.org/package/MissingH-1.4.0.1/docs/Data-CSV.html) to parse the response.  
+Be careful because all the data will sit in memory after this call.
+
+`resultDownload`reads the response's body and writes it to a file, chunk by chunk. This will run in constant space, so you're only limited by your disk space, not your RAM.
