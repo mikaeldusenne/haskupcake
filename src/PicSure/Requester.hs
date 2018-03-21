@@ -85,19 +85,19 @@ request' url postget action = do
 -- HTTP 500 errors are logged and skipped
 -- HTTP 401 (unauthorized) are thrown (token needs to be refreshed)
 -- for other errors, wait a bit and retry (for unstable connexions)
-request :: String -> PostGet -> ReaderT Config IO (Maybe Value)
+request :: String -> PostGet -> ReaderT Config IO (Maybe BSL.ByteString)
 request url postget = do
   -- we're in the Reader Monad, `ask` gives us the environment, ie the Config value
   c <- ask
-  let -- exceptionHandler :: HttpException -> ReaderT Config IO (Maybe [Value])
+  let -- exceptionHandler :: HttpException -> ReaderT Config IO (Maybe BSL.ByteString)
       exceptionHandler e =
         case e of -- 
           (HttpExceptionRequest _ (StatusCodeException c b)) -> 
             liftIO (putStrLn . concat . afterEach "\n────────────────────────\n" $ [show e,BS.unpack b])
             >> f (statusCode . responseStatus $ c)
           _ -> retry e
-        where -- f :: Int -> ReaderT Config IO (Maybe [Value])
-              f codeNb 
+        where -- f :: Int -> ReaderT Config IO (Maybe BSL.ByteString)
+              f codeNb
                 | codeNb `elem` [500] = liftIO (handleError codeNb) -- throw e -- give up on those error codes
                 | codeNb `elem` [401, 404] = throw e
                 | otherwise = retry e
@@ -110,18 +110,18 @@ request url postget = do
               -- retry :: HttpException -> ReaderT Config IO (Maybe [Value])
               retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
 
-      -- get :: ReaderT Config IO (Maybe [Value])
-      get = decode . BSL.fromChunks <$> request' url postget (brConsume . responseBody)
+      get :: ReaderT Config IO (Maybe BSL.ByteString)
+      get = Just . BSL.fromChunks <$> request' url postget (brConsume . responseBody)
   (liftCatch catch) get exceptionHandler
 
 -- |send a GET request to the pic-sure api
 -- the provided url will be appened to the root api url,
 -- aka https://<domain>/rest/v1/
-getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> ReaderT Config IO (Maybe Value)
+getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> ReaderT Config IO (Maybe BSL.ByteString)
 getRequest url params = request url (Params params)
 
 -- |POST request
-postRequest :: String -> BSL.ByteString -> ReaderT Config IO (Maybe Value)
+postRequest :: String -> BSL.ByteString -> ReaderT Config IO (Maybe BSL.ByteString)
 postRequest url body = request url (Body $ RequestBodyLBS body)
 
 -- |send a request without parameters

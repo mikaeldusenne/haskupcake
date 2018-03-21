@@ -27,12 +27,12 @@ urlAbout = urlSystemService </> "about"
 
 
 about :: ReaderT Config IO BSL.ByteString
-about = prettyJson <$> getRequest' urlAbout
+about = prettyJson . (>>=decodeValue) <$> getRequest' urlAbout
 
 
 -- |list available services on pic-sure
 listServices :: ReaderT Config IO [String]
-listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray . fromJust
+listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray . decodeValue'
                <$> listResources
 
 listResources = getRequest' urlResources
@@ -52,7 +52,7 @@ lsPath relative path = do
   let pui = ( f . unString . PicSure.Utils.Json.lookup "pui")
         where f = if relative then subStrAfterPath path else Prelude.id
   return $ case resp of Nothing -> []
-                        Just r -> fmap pui . unArray $ r
+                        r -> fmap pui . unArray . decodeValue' $ r
 
 lsPath' = lsPath False
 

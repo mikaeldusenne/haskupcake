@@ -45,14 +45,14 @@ query cols whereClause = do
   let body = encode $ Query {select=cols, whereClauses=whereClause}
       extract o = PicSure.Utils.Json.lookup "resultId" o
   -- liftIO $ BSL.putStrLn body
-  fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) <$> postRequest urlRunQuery body
+  fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) . (>>=decodeValue) <$> postRequest urlRunQuery body
 
 -- resultStatus :: Integral n => [Variable] -> [Where] -> ReaderT Config IO n
 resultStatus :: Show a => a -> ReaderT Config IO BSL.ByteString
-resultStatus n = Pretty.encodePretty <$> getRequest (urlResultStatus</>show n) []
+resultStatus n = Pretty.encodePretty . (>>=decodeValue) <$> getRequest (urlResultStatus</>show n) []
 
-resultAvailableFormats n = (>>=liftIO . BSL.putStrLn) . (Pretty.encodePretty <$>) $ getRequest (urlAvailableFormats</>show n) []
-
+resultAvailableFormats :: Show a => a -> ReaderT Config IO (Maybe [String])
+resultAvailableFormats n = (>>=decode) <$> getRequest (urlAvailableFormats</>show n) []
 
 urlResultDownloadCSV n = (urlResultDownload</>show n</>"CSV")
 

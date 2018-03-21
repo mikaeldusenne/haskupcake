@@ -1,5 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
 module PicSure.Utils.Json where
 
+import Control.Monad.IO.Class (liftIO)
 import qualified Data.Aeson.Encode.Pretty as Pretty
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.HashMap.Strict as HM
@@ -7,6 +9,12 @@ import Data.Aeson
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import PicSure.Utils.Misc
+
+decodeValue :: BSL.ByteString -> Maybe Value
+decodeValue = decode
+
+decodeValue' :: (Maybe BSL.ByteString) -> Value
+decodeValue' = fromJust . (>>=decodeValue)
 
 
 lookup :: T.Text -> Value -> Value
@@ -21,6 +29,9 @@ unArray (Array a) = V.toList a
 
 stringToValue = String . T.pack
 
-
 prettyJson :: Maybe Value -> BSL.ByteString
 prettyJson = Pretty.encodePretty . fromJust
+
+jsonPrettyPrint :: Maybe Value -> IO ()
+jsonPrettyPrint (Just e) = BSL.putStrLn . Pretty.encodePretty $ e
+jsonPrettyPrint Nothing = BSL.putStrLn "Nothing"
