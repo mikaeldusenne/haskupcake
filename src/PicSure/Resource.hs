@@ -8,6 +8,8 @@ import Data.Foldable
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
 
+import Data.List
+
 import qualified Data.ByteString.Lazy.Char8 as BSL
 
 import PicSure.Utils.Misc
@@ -80,12 +82,19 @@ bfs nextf checkf startNode = let
 -- |search a specific <node>, starting at the absolute path <from>
 searchPath :: String -> String -> ReaderT Config IO (Maybe String)
 searchPath node from = do
-  let checkf = ((\n -> if n == node then Just n else Nothing) . pathdirname)
-  case checkf from of
+  let (headNode : restNode) =  splitPath node
+      checkf = ((\n -> if n == headNode then Just n else Nothing) . pathdirname)
+  p <- case checkf from of
     Nothing -> do c <- ask
                   liftIO $ bfs ((`runReaderT` c) . lsPath') checkf from
-    n -> return n
-
+    n -> do
+      
+      liftIO $ do
+        print headNode
+        print restNode
+        print n
+      return n -- . Just $ foldl (</>) n restNode
+  return $ (\e -> foldl (</>) e restNode) <$> p
 -- |search in all the available resources
 searchPath' node = searchPath node ""
 

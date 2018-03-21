@@ -22,11 +22,16 @@ run f = do
   config <- readConfig "./config.json"
   runReaderT f config
 
-puistr = "" 
-fieldstr = Field {pui=puistr, dataType="STRING"}
-vars = [Variable {field=fieldstr, alias="first_alias"}]
-whereclause = Where {field = fieldstr, predicate = CONTAINS, fields = M.fromList [("ENOUNTER", "YES")]}
-
+puistr = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female/"
+fieldstr = Field {pui=puistr,
+                  dataType="STRING"}
+           
+vars = [Variable {field=fieldstr,
+                  alias="first_alias"}]
+       
+whereclause = Where {field = fieldstr,
+                     predicate = CONTAINS,
+                     fields = M.fromList [("ENOUNTER", "YES")]}
 
 main = do
   -- here we still are in the IO monad
