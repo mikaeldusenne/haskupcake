@@ -37,14 +37,14 @@ about = prettyJson . (>>=decodeValue) <$> getRequest' urlAbout
 -- |list available services on pic-sure
 listServices :: StateT PicState IO [String]
 listServices = do
-  (\(Node _ l) -> l) <$> gets cache >>= \case
-    [] -> do
+  gets cache >>= \case
+    (Node _ []) -> do
       l <- fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
         <$> listResources
       traverse (modify . (flip addToCache)) l
       get >>= liftIO . print 
       return l
-    l -> return (map treeValue l)
+    (Node _ l) -> return (map treeValue l)
 
 listResources = decodeValue' <$> getRequest' urlResources
 
@@ -54,16 +54,30 @@ subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -
 pathdirname = (\l -> if isEmpty l then "" else last l) . filter (not . isEmpty) . splitOn (=='/')
 pathLength = length . splitOn (=='/')
 
+  
 -- |the equivalent of `ls`, list the direct children of a given path in pic-sure
 -- lsPath with the empty string switches to lsResources
 lsPath :: Bool -> String -> StateT PicState IO [String]
 lsPath _ "" = listServices
-lsPath relative path = do
-  resp <- getRequest' (urlPath </> path)
-  let pui = ( f . unString . PicSure.Utils.Json.lookup "pui")
-        where f = if relative then subStrAfterPath path else Prelude.id
-  return $ case resp of Nothing -> []
-                        r -> fmap pui . unArray . decodeValue' $ r
+lsPath relative path = let
+  l = reverse . snd . foldl f ("", []) $ splitPath path
+    where f (s, acc) e = (s</>e, s</>e : acc)
+  go p = do
+    cache <- gets cache
+    let l = splitPath p
+        found = treeFind cache l    
+    case found of
+      Nothing -> do
+        resp <- getRequest' (urlPath </> p)
+        let pui = ( f . unString . PicSure.Utils.Json.lookup "pui")
+              where f = if relative then subStrAfterPath p else Prelude.id
+            paths = case resp of Nothing -> []
+                                 r -> fmap pui . unArray . decodeValue' $ r
+        traverse (modify . (flip addToCache)) paths
+        return paths
+      Just l -> return $ map (f . treeValue) l
+        where f = if relative then id else (p</>)
+  in last <$> traverse go l
 
 lsPath' = lsPath False
 

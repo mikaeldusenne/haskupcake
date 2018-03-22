@@ -12,4 +12,7 @@ import Data.List
                          2 -> a ++ tail b
 
 
-splitPath = splitWhen "/"
+splitPath p = filter (not.isEmpty) . (x:) .splitWhen "/" $ p
+  where x = case p of
+          ('/':xs) -> "/"
+          _ -> ""

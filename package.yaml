@@ -47,6 +47,7 @@ library:
     - time
     - MissingH
     - parsec
+    - monadplus
 
 executables:
   haskupcake:

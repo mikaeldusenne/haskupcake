@@ -10,5 +10,5 @@ import Data.Monoid
 addToCache :: PicState -> [Char] -> PicState
 addToCache (PicState {config=c, cache=cache}) path = PicState{
   config=c,
-  cache=cache <> fromList (splitPath path)
+  cache=cache <> fromList (tail $ splitPath path)
   }

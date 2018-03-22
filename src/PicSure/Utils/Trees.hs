@@ -1,6 +1,8 @@
 module PicSure.Utils.Trees where
 
 import Data.List(foldl')
+import Control.Monad.Plus
+import PicSure.Utils.List
 
 data Tree α = Node α [Tree α] | Leaf α | Empty
 
@@ -63,7 +65,7 @@ instance (Eq α) => Monoid (Tree α) where
 
 treeValue (Leaf a) = a
 treeValue (Node a l) = a
-                       
+
 toList :: Tree a -> [a]
 toList = foldl' (\acc e -> acc++[e]) []
 
@@ -74,22 +76,32 @@ fromList :: [a] -> Tree a
 fromList [x] = Leaf x
 fromList (x:xs) = Node x [fromList xs]
 
--- buildTree :: (α -> [α]) -> α -> Tree α
--- buildTree f a = Node a . map buildTree $ f a
+treeFind :: Eq a => Tree a -> [a] -> Maybe [Tree a]
+treeFind (Leaf a) _ = Nothing
+treeFind Empty _    = Nothing
+treeFind (Node _ l) [] = Nothing
+treeFind (Node n l) [x] | n == x = Just l
+                        | otherwise = Nothing
+treeFind (Node n l) (x:xs)
+  | n == x = foldl mplus Nothing (map (`treeFind`xs) l)
+  | otherwise = Nothing
 
-data BTree a = BLeaf a | BNode (BTree a) (BTree a)
-  deriving Show 
+-- -- buildTree :: (α -> [α]) -> α -> Tree α
+-- -- buildTree f a = Node a . map buildTree $ f a
+
+-- data BTree a = BLeaf a | BNode (BTree a) (BTree a)
+--   deriving Show 
 
 
-instance (Read a) => Read (BTree a) where
-  readsPrec d r' = readParen (d > app_prec)
-                  (\r -> [(BLeaf m,t) |
-                           ("BLeaf",s) <- lex r,
-                           (m,t) <- readsPrec (app_prec+1) s]) r'
-                  ++ readParen (d > up_prec)
-                  (\r -> [(BNode u v,w) |
-                           (u,s) <- readsPrec (up_prec+1) r,
-                           (":^:",t) <- lex s,
-                           (v,w) <- readsPrec (up_prec+1) t]) r'
-    where app_prec = 10
-          up_prec = 5
+-- instance (Read a) => Read (BTree a) where
+--   readsPrec d r' = readParen (d > app_prec)
+--                   (\r -> [(BLeaf m,t) |
+--                            ("BLeaf",s) <- lex r,
+--                            (m,t) <- readsPrec (app_prec+1) s]) r'
+--                   ++ readParen (d > up_prec)
+--                   (\r -> [(BNode u v,w) |
+--                            (u,s) <- readsPrec (up_prec+1) r,
+--                            (":^:",t) <- lex s,
+--                            (v,w) <- readsPrec (up_prec+1) t]) r'
+--     where app_prec = 10
+--           up_prec = 5
