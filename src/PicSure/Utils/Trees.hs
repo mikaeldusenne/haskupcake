@@ -9,6 +9,7 @@ instance (Show α) => Show (Tree α) where
     where sh s (Node a l) = leaf s a
                             : concatMap (sh (s++tab)) l
           sh s (Leaf a) = [leaf s a]
+          sh s Empty    = ["ø"]
           tab="  "
           leaf s a = s ++ ">" ++ show a
             
@@ -38,6 +39,9 @@ instance Traversable Tree where
 
 instance (Eq α) => Monoid (Tree α) where
   mempty = Empty
+  mappend (Leaf a) n = Node a [n]
+  mappend Empty e = e
+  mappend e Empty = e
   mappend (Node a l) n = Node a $ add l n
     where add :: (Eq α) => [Tree α] -> Tree α -> [Tree α]
           add [] t = [t]
@@ -59,7 +63,7 @@ instance (Eq α) => Monoid (Tree α) where
 
 treeValue (Leaf a) = a
 treeValue (Node a l) = a
-                                  
+                       
 toList :: Tree a -> [a]
 toList = foldl' (\acc e -> acc++[e]) []
 

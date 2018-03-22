@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, BangPatterns #-}
+{-# LANGUAGE OverloadedStrings, BangPatterns, LambdaCase #-}
 module PicSure.Resource where
 
 import Control.Monad
@@ -17,6 +17,7 @@ import PicSure.Utils.Misc
 import PicSure.Utils.List
 import PicSure.Utils.Trees
 import PicSure.Utils.Json
+import PicSure.Cache
 import PicSure.Utils.Paths
 import PicSure.Types
 import PicSure.Requester
@@ -35,8 +36,15 @@ about = prettyJson . (>>=decodeValue) <$> getRequest' urlAbout
 
 -- |list available services on pic-sure
 listServices :: StateT PicState IO [String]
-listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
-               <$> listResources
+listServices = do
+  (\(Node _ l) -> l) <$> gets cache >>= \case
+    [] -> do
+      l <- fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
+        <$> listResources
+      traverse (modify . (flip addToCache)) l
+      get >>= liftIO . print 
+      return l
+    l -> return (map treeValue l)
 
 listResources = decodeValue' <$> getRequest' urlResources
 

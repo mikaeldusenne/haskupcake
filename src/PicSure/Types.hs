@@ -21,10 +21,13 @@ type Cache = Tree String
 data PicState = PicState {
   config :: Config,
   cache :: Cache}
+  deriving (Show)
+
+cacheRoot = Node "/" []
 
 genPicState c = PicState{
   config=c,
-  cache = Leaf ""
+  cache = cacheRoot
   }
 
 data Config = Config {

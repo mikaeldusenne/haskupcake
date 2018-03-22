@@ -7,4 +7,8 @@ import PicSure.Types
 import Data.Monoid
 
 
-addToCache cache path = cache <> fromList (splitPath path)
+addToCache :: PicState -> [Char] -> PicState
+addToCache (PicState {config=c, cache=cache}) path = PicState{
+  config=c,
+  cache=cache <> fromList (splitPath path)
+  }
