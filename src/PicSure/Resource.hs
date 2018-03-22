@@ -7,6 +7,7 @@ import Data.Foldable
 
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
 
 import Data.List
 
@@ -28,16 +29,16 @@ urlSystemService = "systemService"
 urlAbout = urlSystemService </> "about"
 
 
-about :: ReaderT Config IO BSL.ByteString
+about :: StateT PicState IO BSL.ByteString
 about = prettyJson . (>>=decodeValue) <$> getRequest' urlAbout
 
 
 -- |list available services on pic-sure
-listServices :: ReaderT Config IO [String]
-listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray . decodeValue'
+listServices :: StateT PicState IO [String]
+listServices = fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
                <$> listResources
 
-listResources = getRequest' urlResources
+listResources = decodeValue' <$> getRequest' urlResources
 
 -- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
@@ -47,7 +48,7 @@ pathLength = length . splitOn (=='/')
 
 -- |the equivalent of `ls`, list the direct children of a given path in pic-sure
 -- lsPath with the empty string switches to lsResources
-lsPath :: Bool -> String -> ReaderT Config IO [String]
+lsPath :: Bool -> String -> StateT PicState IO [String]
 lsPath _ "" = listServices
 lsPath relative path = do
   resp <- getRequest' (urlPath </> path)
@@ -66,9 +67,13 @@ findPath term = do
 -- |custom breadth first search
 -- assumes that the tree is acyclic (which it is with pic-sure)
 -- and that the nextf function returns a list of absolute paths
-bfs :: (String -> IO [String]) -> (String -> Maybe String) -> String -> IO (Maybe String)
+bfs :: (String -> StateT PicState IO [String])
+    -> (String -> Maybe String)
+    -> String
+    -> StateT PicState IO (Maybe String)
 -- todo cleaner / more abstract types?
 bfs nextf checkf startNode = let
+  run :: [String] -> StateT PicState IO (Maybe String)
   run [] = return Nothing  -- found nothing
   run (node : nodes) = do
         liftIO $ putStrLn node
@@ -80,13 +85,13 @@ bfs nextf checkf startNode = let
   in run [startNode]
 
 -- |search a specific <node>, starting at the absolute path <from>
-searchPath :: String -> String -> ReaderT Config IO (Maybe String)
+searchPath :: String -> String -> StateT PicState IO (Maybe String)
 searchPath node from = do
   let (headNode : restNode) =  splitPath node
       checkf = ((\n -> if n == headNode then Just n else Nothing) . pathdirname)
   p <- case checkf from of
-    Nothing -> do c <- ask
-                  liftIO $ bfs ((`runReaderT` c) . lsPath') checkf from
+    Nothing -> do c <- gets config
+                  bfs (lsPath') checkf from
     n -> do
       
       liftIO $ do
@@ -105,7 +110,7 @@ completedFile = "data/.completed"
 -- -- |reproduces the data tree in the file system by creating a directory for each item
 -- -- this is for testing purposes, the amount of HTTP requests needed if way to high and
 -- -- this takes ages to complete.
-buildPathTree :: [Char] -> ReaderT Config IO ()
+buildPathTree :: [Char] -> StateT PicState IO ()
 buildPathTree fromNode = do
   let go !completed node = do -- bangpattern needed to enforce strictness of reading (file locked error)
         let dirname = "data" </> node

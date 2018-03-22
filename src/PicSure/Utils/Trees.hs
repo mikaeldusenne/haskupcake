@@ -2,7 +2,7 @@ module PicSure.Utils.Trees where
 
 import Data.List(foldl')
 
-data Tree α = Node α [Tree α] | Leaf α
+data Tree α = Node α [Tree α] | Leaf α | Empty
 
 instance (Show α) => Show (Tree α) where
   show = unlines . sh ""
@@ -36,15 +36,39 @@ instance Traversable Tree where
   traverse f (Node a l) = Node <$> f a <*> traverse (traverse f) l
   traverse f (Leaf a)   = Leaf <$> f a
 
+instance (Eq α) => Monoid (Tree α) where
+  mempty = Empty
+  mappend (Node a l) n = Node a $ add l n
+    where add :: (Eq α) => [Tree α] -> Tree α -> [Tree α]
+          add [] t = [t]
+          add (a:as) b
+            | treeValue a == treeValue b = case a of
+                (Node na la) -> case b of
+                  (Node nb lb) -> Node na (foldl add la lb) : as
+                  (Leaf nb)    -> a : as
+                (Leaf na)    -> b : as
+            | otherwise = a : add as b
+          --       | otherwise = a : add as b
+          -- add (nodea@:xs) node@(Node n l)
+          --   | na == n = 
+          --   | otherwise = nodea : add xs node
+          -- add (nodea@(Leaf na):xs) node@(Node n l)
+          --   | na == n = node : xs
+          --   | otherwise = nodea : add xs node
+          -- all (nodea@(Node na la):xs) node@(Node n l)
 
+treeValue (Leaf a) = a
+treeValue (Node a l) = a
+                                  
 toList :: Tree a -> [a]
 toList = foldl' (\acc e -> acc++[e]) []
 
 toListLeafs (Node a l) = foldl' (++) [] . map toListLeafs $ l
 toListLeafs (Leaf a) = [a]
 
-
-
+fromList :: [a] -> Tree a
+fromList [x] = Leaf x
+fromList (x:xs) = Node x [fromList xs]
 
 -- buildTree :: (α -> [α]) -> α -> Tree α
 -- buildTree f a = Node a . map buildTree $ f a

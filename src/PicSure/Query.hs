@@ -9,7 +9,7 @@ import GHC.Generics
 import System.IO
 import Network.HTTP.Client
 
-import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.ByteString.Char8 as BS
@@ -40,17 +40,17 @@ urlAvailableFormats = urlResultService </> "availableFormats"
 urlResultDownload   = urlResultService </> "result"
 
 
--- query :: Integral n => [Variable] -> [Where] -> ReaderT Config IO n
+-- query :: Integral n => [Variable] -> [Where] -> StateT PicState IO n
 query cols whereClause = do
   let body = encode $ Query {select=cols, whereClauses=whereClause}
       extract o = PicSure.Utils.Json.lookup "resultId" o
   -- liftIO $ BSL.putStrLn body
   fromRight . floatingOrInteger . unNumber . fromJust . (extract<$>) . (>>=decodeValue) <$> postRequest urlRunQuery body
 
--- resultStatus :: Show a => a -> ReaderT Config IO BSL.ByteString
+-- resultStatus :: Show a => a -> StateT PicState IO BSL.ByteString
 resultStatus n = Pretty.encodePretty . (>>=decodeValue) <$> getRequest (urlResultStatus</>show n) []
 
--- resultAvailableFormats :: Show a => a -> ReaderT Config IO (Maybe [String])
+-- resultAvailableFormats :: Show a => a -> StateT PicState IO (Maybe [String])
 resultAvailableFormats n = (>>=decode) <$> getRequest (urlAvailableFormats</>show n) []
 
 urlResultDownloadCSV n = (urlResultDownload</>show n</>"CSV")

@@ -16,10 +16,11 @@ import PicSure.Utils.Misc
 import PicSure.Utils.Json
 import PicSure.Utils.Trees
 
+type Cache = Tree String
 
 data PicState = PicState {
   config :: Config,
-  cache :: Tree String}
+  cache :: Cache}
 
 genPicState c = PicState{
   config=c,
