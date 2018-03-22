@@ -14,6 +14,39 @@ import qualified Data.Text as T
 
 import PicSure.Utils.Misc
 import PicSure.Utils.Json
+import PicSure.Utils.Trees
+
+
+data PicState = PicState {
+  config :: Config,
+  cache :: Tree String}
+
+genPicState c = PicState{
+  config=c,
+  cache = Leaf ""
+  }
+
+data Config = Config {
+  domain :: String,
+  auth :: Auth,
+  debug :: Bool,
+  sessionCookies :: Maybe CookieJar,
+  manager :: Manager
+  }
+
+instance Show Config where
+  show (Config{domain=d, auth=auth}) = show d ++ " - " ++ show auth
+
+instance FromJSON Config where
+  parseJSON = withObject "config" $ \o -> do
+    domain  <- o .:  "domain"
+    debug   <- o .:? "debug"  .!= False
+    auth    <- o .:?  "token" >>= \case
+      Just t -> return $ Token t
+      Nothing -> error "no authentication method found in config"
+    let sessionCookies = Nothing
+        manager = undefined -- disgustingly ugly?
+    return Config{..}
 
 
 data Field = Field {pui :: String,
@@ -65,26 +98,5 @@ instance ToJSON Query where
 data Auth = Token {runToken :: String}
   deriving (Show)
 
-data Config = Config {
-  domain :: String,
-  auth :: Auth,
-  debug :: Bool,
-  sessionCookies :: Maybe CookieJar,
-  manager :: Manager
-  }
-
-instance Show Config where
-  show (Config{domain=d, auth=auth}) = show d ++ " - " ++ show auth
-
-instance FromJSON Config where
-  parseJSON = withObject "config" $ \o -> do
-    domain  <- o .:  "domain"
-    debug   <- o .:? "debug"  .!= False
-    auth    <- o .:?  "token" >>= \case
-      Just t -> return $ Token t
-      Nothing -> error "no authentication method found in config"
-    let sessionCookies = Nothing
-        manager = undefined -- disgustingly ugly?
-    return Config{..}
 
 data PostGet = Params [(BS.ByteString, BS.ByteString)] | Body RequestBody

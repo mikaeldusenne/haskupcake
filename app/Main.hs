@@ -3,6 +3,7 @@ module Main where
 
 import Control.Concurrent (threadDelay)
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
 import Control.Monad.IO.Class (liftIO)
 
 import qualified Data.ByteString.Lazy.Char8 as BSL
@@ -17,10 +18,10 @@ import PicSure.Query
 import PicSure.Utils.Paths
 import PicSure.Types
 
-run :: ReaderT Config IO b -> IO b
+run :: StateT PicState IO a -> IO (a, PicState)
 run f = do
   config <- readConfig "./config.json"
-  runReaderT f config
+  runStateT f $ genPicState config
 
 puistr = "/PMSDN-dev/Demo/01 PMS Registry (Patient Reported Outcomes)/01 PMS Registry (Patient Reported Outcomes)/Demographics/Sex/Female/"
 fieldstr = Field {pui=puistr,
@@ -35,24 +36,26 @@ whereclause = Where {field = fieldstr,
 
 main = do
   -- here we still are in the IO monad
-  config <- readConfig "./config.json"
+  -- config <- readConfig "./config.json"
   -- pui <- readFile "pui"
   -- (`runReaderT` config) $ do
     -- now we're in the Reader Monad
   run $ do
     -- buildPathTree pmsdn
     -- searchPath' "" >>= lsPath' >>= print
-    -- listResources >>= liftIO . BSL.putStrLn . Pretty.encodePretty
+    listResources >>= liftIO . BSL.putStrLn . Pretty.encodePretty
 
     -- debug queries id#
-    n <- query vars [whereclause]
 
-    -- and with liftIO we can do IO things
-    liftIO $ do
-      putStrLn $ "id: " ++ show n
-      threadDelay 1000000
 
-    resultStatus n
-    resultStatus (n+1)
+    -- n <- query vars [whereclause]
+
+    -- -- and with liftIO we can do IO things
+    -- liftIO $ do
+    --   putStrLn $ "id: " ++ show n
+    --   threadDelay 1000000
+
+    -- resultStatus n
+    -- resultStatus (n+1)
   
   -- sequence_ (map (run . (\n -> liftIO (print n) >> resultStatus n)) [110..125])

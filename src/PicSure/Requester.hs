@@ -15,7 +15,8 @@ import Data.Conduit
 -- import Data.Conduit.Binary (sinkFile)
 import Control.Monad.IO.Class
 -- import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
+
 import Control.Monad.Trans.Resource
 import Control.Concurrent (threadDelay)
 import Control.Exception
@@ -58,10 +59,10 @@ logRequest req = do
 
 
 -- |No http error handling
--- request' :: String -> PostGet -> ReaderT Config IO (Response BSL.ByteString)
-request' :: String -> PostGet -> (Response BodyReader -> IO b) -> ReaderT Config IO b
+-- request' :: String -> PostGet -> StateT Config IO (Response BSL.ByteString)
+request' :: String -> PostGet -> (Response BodyReader -> IO b) -> StateT PicState IO b
 request' url postget action = do
-  config <- ask
+  config <- gets config
   let tokparam = [("Authorization", BS.pack ("bearer " <> (runToken $ auth config)))]
       applyPostGet req = case postget of
         (Params l) -> req{ queryString = (rq $ l)
@@ -85,18 +86,18 @@ request' url postget action = do
 -- HTTP 500 errors are logged and skipped
 -- HTTP 401 (unauthorized) are thrown (token needs to be refreshed)
 -- for other errors, wait a bit and retry (for unstable connexions)
-request :: String -> PostGet -> ReaderT Config IO (Maybe BSL.ByteString)
+request :: String -> PostGet -> StateT PicState IO (Maybe BSL.ByteString)
 request url postget = do
   -- we're in the Reader Monad, `ask` gives us the environment, ie the Config value
-  c <- ask
-  let -- exceptionHandler :: HttpException -> ReaderT Config IO (Maybe BSL.ByteString)
+  PicState{config=c, cache=cache} <- get
+  let -- exceptionHandler :: HttpException -> StateT Config IO (Maybe BSL.ByteString)
       exceptionHandler e =
         case e of -- 
           (HttpExceptionRequest _ (StatusCodeException c b)) -> 
             liftIO (putStrLn . concat . afterEach "\n────────────────────────\n" $ [show e,BS.unpack b])
             >> f (statusCode . responseStatus $ c)
           _ -> retry e
-        where -- f :: Int -> ReaderT Config IO (Maybe BSL.ByteString)
+        where -- f :: Int -> StateT Config IO (Maybe BSL.ByteString)
               f codeNb
                 | codeNb `elem` [500] = liftIO (handleError codeNb) -- throw e -- give up on those error codes
                 | codeNb `elem` [401, 404] = throw e
@@ -107,21 +108,21 @@ request url postget = do
                               print (domain c) >> print url >>
                               return Nothing
 
-              -- retry :: HttpException -> ReaderT Config IO (Maybe [Value])
+              -- retry :: HttpException -> StateT Config IO (Maybe [Value])
               retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
 
-      get :: ReaderT Config IO (Maybe BSL.ByteString)
+      get :: StateT PicState IO (Maybe BSL.ByteString)
       get = Just . BSL.fromChunks <$> request' url postget (brConsume . responseBody)
   (liftCatch catch) get exceptionHandler
 
 -- |send a GET request to the pic-sure api
 -- the provided url will be appened to the root api url,
 -- aka https://<domain>/rest/v1/
-getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> ReaderT Config IO (Maybe BSL.ByteString)
+getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> StateT PicState IO (Maybe BSL.ByteString)
 getRequest url params = request url (Params params)
 
 -- |POST request
-postRequest :: String -> BSL.ByteString -> ReaderT Config IO (Maybe BSL.ByteString)
+postRequest :: String -> BSL.ByteString -> StateT PicState IO (Maybe BSL.ByteString)
 postRequest url body = request url (Body $ RequestBodyLBS body)
 
 -- |send a request without parameters
