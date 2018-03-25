@@ -48,6 +48,7 @@ library:
     - MissingH
     - parsec
     - monadplus
+    - strict
 
 executables:
   haskupcake:
@@ -62,7 +63,9 @@ executables:
     - bytestring
     - aeson-pretty
     - unordered-containers
-    - transformers    
+    - transformers
+    - regex-pcre
+    - mtl
 
 tests:
   haskupcake-test:

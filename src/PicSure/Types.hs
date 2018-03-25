@@ -1,5 +1,6 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields, RecordWildCards, LambdaCase#-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, DuplicateRecordFields, RecordWildCards, LambdaCase #-}
 module PicSure.Types where
+import Prelude hiding (readFile)
 
 import Network.HTTP.Client
 import Network.HTTP.Types(Header)
@@ -9,12 +10,19 @@ import qualified Data.Vector as V
 import qualified Data.Aeson.Encode.Pretty as Pretty
 import GHC.Generics
 import qualified Data.ByteString.Char8 as BS
+import System.IO.Strict
+
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Maybe
 
 import qualified Data.Text as T
 
 import PicSure.Utils.Misc
 import PicSure.Utils.Json
 import PicSure.Utils.Trees
+import System.Directory
+
+type MbStIO a = MaybeT (StateT PicState IO) a
 
 type Cache = Tree String
 
@@ -25,9 +33,18 @@ data PicState = PicState {
 
 cacheRoot = Node "/" []
 
-genPicState c = PicState{
-  config=c,
-  cache = cacheRoot
+genPicState c = do
+  cache <- case cacheFile c of
+    Just file -> do
+      doesFileExist file >>= \case
+        False -> return cacheRoot
+        True -> do
+          s <- readFile file
+          return $ if s == "" then cacheRoot else read s
+    _ -> return cacheRoot
+  return PicState{
+    config=c,
+    cache = cache
   }
 
 data Config = Config {
@@ -35,16 +52,24 @@ data Config = Config {
   auth :: Auth,
   debug :: Bool,
   sessionCookies :: Maybe CookieJar,
-  manager :: Manager
+  manager :: Manager,
+  cacheFile :: Maybe String
   }
 
+defConfig = Config{domain="",
+                  auth=Token "",
+                  debug=True,
+                  sessionCookies=Nothing,
+                  cacheFile=Nothing}
+
 instance Show Config where
-  show (Config{domain=d, auth=auth}) = show d ++ " - " ++ show auth
+  show (Config{domain=d, auth=auth, cacheFile=cf}) = show d ++ " - " ++ show auth ++ " - " ++ show cf
 
 instance FromJSON Config where
   parseJSON = withObject "config" $ \o -> do
     domain  <- o .:  "domain"
     debug   <- o .:? "debug"  .!= False
+    cacheFile   <- o .:? "cache"
     auth    <- o .:?  "token" >>= \case
       Just t -> return $ Token t
       Nothing -> error "no authentication method found in config"
@@ -52,6 +77,8 @@ instance FromJSON Config where
         manager = undefined -- disgustingly ugly?
     return Config{..}
 
+data Status = AVAILABLE | RUNNING | STARTED
+  deriving (Show, Read)
 
 data Field = Field {pui :: String,
                     dataType :: String}
@@ -66,12 +93,12 @@ data Variable = Variable {field :: Field,
 data Predicate = CONTAINS
   deriving (Show)
 
-data LogicalOperator = OR | AND
+data LogicalOperator = OR | AND | NOT
   deriving (Show)
-
 
 data Where = Where {field :: Field,
                     predicate :: Predicate,
+                    logicalOperator :: LogicalOperator,
                     fields :: M.HashMap String String
                    }
   deriving(Generic)

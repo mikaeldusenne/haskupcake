@@ -6,8 +6,10 @@ import PicSure.Utils.Misc
 ---------------------------------------------------
 {- SAFE -}
 
-safe_head l = if isEmpty l then Nothing else Just (head l)
-safe_tail l = if isEmpty l then Nothing else Just (tail l)
+safe_part f l = if isEmpty l then Nothing else Just $ f l
+safe_head = safe_part head
+safe_tail = safe_part tail
+safe_last = safe_part last
 
 -- isEmpty :: (Foldable t, Functor t) => t a -> Bool
 -- isEmpty = (==0) . count
@@ -136,7 +138,7 @@ surround a = surround2 a a
 
 surroundWith s = (s++) . (++s)
 
-basename = last . filter (not . isEmpty) . splitOn (=='/')
+-- basename = last . filter (not . isEmpty) . splitOn (=='/')
 
 fix'size'side side k e s = f . take k $ s
   where f = if side==1 then (mappend strfill) else (`mappend` strfill)

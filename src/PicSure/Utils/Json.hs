@@ -29,8 +29,8 @@ unArray (Array a) = V.toList a
 
 stringToValue = String . T.pack
 
-prettyJson :: Maybe Value -> BSL.ByteString
-prettyJson = Pretty.encodePretty . fromJust
+prettyJson :: Value -> BSL.ByteString
+prettyJson = Pretty.encodePretty
 
 jsonPrettyPrint :: Maybe Value -> IO ()
 jsonPrettyPrint (Just e) = BSL.putStrLn . Pretty.encodePretty $ e

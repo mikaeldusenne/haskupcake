@@ -16,3 +16,6 @@ splitPath p = filter (not.isEmpty) . (x:) .splitWhen "/" $ p
   where x = case p of
           ('/':xs) -> "/"
           _ -> ""
+
+basename = last . splitPath
+dirname  = last . init . splitPath

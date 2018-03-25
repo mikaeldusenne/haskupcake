@@ -1,10 +1,15 @@
 module PicSure.Utils.Misc where
 
-fromJust Nothing = error "could not apply fromJust to Nothing"
+import Control.Monad.Plus
+
+fromJust Nothing  = error "could not apply fromJust to Nothing"
 fromJust (Just a) = a
 
-fromLeft (Left e) = e
+fromLeft  (Left e)  = e
 fromRight (Right e) = e
+
+rightToMaybe (Left e)  = Nothing
+rightToMaybe (Right e) = Just e
 
 isJust (Just _) = True
 isJust _ = False
@@ -22,3 +27,8 @@ applyN n f x = applyN (n-1) f (f x)
 
 applyToSnd f (a, b) = (a, f b)
 applyToFst f (a, b) = (f a, b)
+
+perhaps b f = if b then f else id
+
+liftMaybe :: (MonadPlus m) => Maybe a -> m a
+liftMaybe = maybe mzero return

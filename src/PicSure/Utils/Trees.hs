@@ -1,23 +1,31 @@
 module PicSure.Utils.Trees where
 
+import Data.List
+
 import Data.List(foldl')
 import Control.Monad.Plus
 import PicSure.Utils.List
+import PicSure.Utils.Misc
 
 data Tree α = Node α [Tree α] | Leaf α | Empty
 
+-- instance (Show α) => Show (Tree α) where
+--   show = unlines . sh ""
+--     where sh s (Node a l) = leaf s a
+--                             : concatMap (sh (s++tab)) l
+--           sh s (Leaf a) = [leaf s a]
+--           sh s Empty    = ["ø"]
+--           tab="  "
+--           leaf s a = s ++ "." ++ show a
+
 instance (Show α) => Show (Tree α) where
-  show = unlines . sh ""
-    where sh s (Node a l) = leaf s a
-                            : concatMap (sh (s++tab)) l
-          sh s (Leaf a) = [leaf s a]
-          sh s Empty    = ["ø"]
-          tab="  "
-          leaf s a = s ++ ">" ++ show a
-            
+  show (Node a l) = "(" ++ show a ++ ",[" ++ (intercalate "," $ map show l) ++ "])"
+  show (Leaf a) = "(" ++ show a ++ ")"
+  show Empty = "(ø)"
 
 instance (Read α) => Read (Tree α) where
-  readsPrec k r = [(Node a l, s''') |
+  readsPrec k r | isInfixOf "(ø)" r = [(Empty, drop 3 r)]
+                | otherwise = [(Node a l, s''') |
                    ("(",s)   <- lex r,
                    (a,',':s') <- readsPrec (k+1) s,
                    (l, s'')   <- readsPrec (k+1) s',
@@ -73,6 +81,7 @@ toListLeafs (Node a l) = foldl' (++) [] . map toListLeafs $ l
 toListLeafs (Leaf a) = [a]
 
 fromList :: [a] -> Tree a
+fromList [] = Empty
 fromList [x] = Leaf x
 fromList (x:xs) = Node x [fromList xs]
 
