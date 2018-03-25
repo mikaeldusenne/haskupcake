@@ -115,26 +115,25 @@ buildQuery l = let
 
 -- simpleQuery :: [(String, String)] -> StateT PicState IO ()
 simpleQuery :: [(String, String)] -> String -> MbStIO ()
-simpleQuery cols file = let
-  puis = map snd cols
-  join = joinCsv
-  waitUntilAvailable n = resultStatus n >>= \case AVAILABLE -> return ()
-                                                  _ -> liftIO (threadDelay 1000000) >> waitUntilAvailable n
-  q (Query vs ws) = do
-    n <- query vs ws
-    waitUntilAvailable n
-    fromRight <$> resultFetch n
-  queryOne :: (String, String) -> MbStIO [[String]]
-  queryOne (alias, pui) = let
-    Query{select=vars, whereClauses=whereClauses} = buildQuery [(alias, pui)]
-    in lsPath False pui >>= \case
-    [] -> q $ Query vars whereClauses
-    l  -> merge <$> (q $ buildQuery $ zip (map toAlias l) l)
-      where merge :: [[String]] -> [[String]]
-            merge ((h:_):xs) = (h:[alias]) : map f xs
-              where f (c:cs) = c : [concat cs]
+simpleQuery cols file = do
+  puis <- traverse searchPath' $  map snd cols
+  let join = joinCsv
+      waitUntilAvailable n = resultStatus n >>= \case AVAILABLE -> return ()
+                                                      _ -> liftIO (threadDelay 1000000) >> waitUntilAvailable n
+      q (Query vs ws) = do
+        n <- query vs ws
+        waitUntilAvailable n
+        fromRight <$> resultFetch n
+      queryOne :: (String, String) -> MbStIO [[String]]
+      queryOne (alias, pui) = let
+        Query{select=vars, whereClauses=whereClauses} = buildQuery [(alias, pui)]
+        in lsPath False pui >>= \case
+        [] -> q $ Query vars whereClauses
+        l  -> merge <$> (q $ buildQuery $ zip (map toAlias l) l)
+          where merge :: [[String]] -> [[String]]
+                merge ((h:_):xs) = (h:[alias]) : map f xs
+                  where f (c:cs) = c : [concat cs]
     
-  in do
   l <- (\l -> if length l > 1 then reduce join l else head l) <$> mapM queryOne cols
   -- liftIO $ mapM_ (\(name, content) -> writeFile name $ CSV.genCsvFile content) $ zip (map fst cols) l
   liftIO $ writeFile file $ CSV.genCsvFile l

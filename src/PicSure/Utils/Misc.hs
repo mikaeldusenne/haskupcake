@@ -11,6 +11,8 @@ fromRight (Right e) = e
 rightToMaybe (Left e)  = Nothing
 rightToMaybe (Right e) = Just e
 
+boolToMaybe boolf e = if boolf e then Just e else Nothing
+
 isJust (Just _) = True
 isJust _ = False
 

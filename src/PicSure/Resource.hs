@@ -42,7 +42,7 @@ listServices = do
     (Node _ []) -> do
       l <- fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
         <$> listResources
-      lift $ do traverse (modify . (flip addToCache) . ('/':)) l
+      lift $ do traverse (modify . (flip addToCache)) l
                 persistCache
                 get >>= liftIO . print 
       return l
@@ -71,25 +71,23 @@ lsPath relative path = let
     cachef <- lift $ cacheFile <$> gets config
     let l = splitPath p
     case treeFind cache l of
-      Just l -> liftMaybe . Just $ map (perhaps relative (p</>) . treeValue) l
+      Just l -> liftMaybe . Just $ map (perhaps (not relative) (p</>) . treeValue) l
       Nothing -> do -- not in cache: perform request
         -- paths :: Maybe [String]
         paths <- do
-          let pui = ( perhaps relative (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
+          let pui = (perhaps (not relative) (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
           r <- getRequest' (urlPath </> p) >>= MaybeT . return . decode
           return $ (fmap pui . unArray) <$> r
             -- paths = (fmap pui . unArray<$>) <$> (resp>>=decode)
-        lift $ traverse_ (modify . (flip addToCache)) l
-        lift persistCache
+        lift $ traverse (modify . (flip addToCache)) l >> persistCache
         liftMaybe paths
   in last <$> traverse go l
 
 lsPath' = lsPath False
 
 
-findPath term = do
-  resp <- getRequest urlFind [("term", term)]
-  return resp
+findPath term = getRequest urlFind [("term", term)]
+
 
 -- |custom breadth first search
 -- assumes that the tree is acyclic (which it is with pic-sure)
@@ -109,38 +107,20 @@ bfs nextf checkf startNode = let
         case (foldl f Nothing (node:nexts)) of
           Nothing -> run $ nodes++nexts
           n -> liftMaybe $ (node</>) <$> n
-  in run [startNode]
+  in do ans <- run [startNode]
+        error ans
 
 -- |search a specific <node>, starting at the absolute path <from>
 searchPath :: String -> String -> MbStIO String
 searchPath node from = do
+  liftIO $ putStrLn $ "search " ++ node
   let (headNode : restNode) = splitPath node
-      checkf = ((\n -> if n == headNode then Just n else Nothing) . pathdirname)
+      checkf = boolToMaybe (==headNode) . pathdirname
   (\e -> foldl (</>) e restNode) <$> bfs lsPath' checkf from >>=  -- bfs
-    \p -> lsPath' p >>=                                           -- check full path existence
+    \p -> (do error p
+              lsPath' p) >>=                                           -- check full path existence
     \_ -> liftMaybe $ Just p                                      -- return
   
 -- |search in all the available resources
-searchPath' node = searchPath node ""
+searchPath' node = searchPath node "/"
 
--------- tests --------
-
--- completedFile = "data/.completed"
-
--- -- -- |reproduces the data tree in the file system by creating a directory for each item
--- -- -- this is for testing purposes, the amount of HTTP requests needed if way to high and
--- -- -- this takes ages to complete.
--- buildPathTree :: [Char] -> StateT PicState IO ()
--- buildPathTree fromNode = do
---   let go !completed node = do -- bangpattern needed to enforce strictness of reading (file locked error)
---         let dirname = "data" </> node
---             isNotComplete = True -- not $ elem node completed
---         liftIO $ putStrLn ((take (pathLength node - 1) $ repeat ' ') ++ show (pathLength node) ++ (pathdirname node)) -- just being fancy
---         when ((pathLength node <= 18) && isNotComplete) $ do
---           liftIO $ createDirectoryIfMissing True dirname
---           lsPath True node >>= traverse_ (go completed . (node</>))
---           -- >> appendFile completedFile (node++"\n")
---           -- >> hPutStrLn h (node ++ "\n"))
---           -- >>= (return . (node:) . concat))  
---   completed <- lines <$> (liftIO $ readFile completedFile)
---   go completed fromNode

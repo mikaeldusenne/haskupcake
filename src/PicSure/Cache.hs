@@ -16,7 +16,7 @@ import Control.Monad.IO.Class (liftIO)
 addToCache :: PicState -> [Char] -> PicState
 addToCache (PicState {config=c, cache=cache}) path = PicState{
   config=c,
-  cache=cache <> fromList (tail $ splitPath path)
+  cache=cache <> fromList (tail . splitPath $ "/" </> path)
   }
 
 persistCache :: StateT PicState IO ()
