@@ -38,15 +38,14 @@ about = getRequest' urlAbout >>= (MaybeT . return . (prettyJson <$>) .  decodeVa
 -- |list available services on pic-sure
 listServices :: MbStIO [String]
 listServices = do
-  lift (gets cache) >>= \case
-    (Node _ []) -> do
+  lift (gets cache) >>> (liftIO . print . show) >>= \case
+    (Node _ l@(x:xs)) -> return (map treeValue l)
+    _ -> do
       l <- fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
         <$> listResources
       lift $ do traverse (modify . (flip addToCache)) l
                 persistCache
-                get >>= liftIO . print 
       return l
-    (Node _ l) -> return (map treeValue l)
 
 listResources :: MbStIO Value
 listResources = getRequest' urlResources >>= MaybeT . return . decodeValue
@@ -57,30 +56,30 @@ subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -
 pathdirname = (\l -> if isEmpty l then "" else last l) . filter (not . isEmpty) . splitOn (=='/')
 pathLength = length . splitOn (=='/')
 
-  
+
 -- |the equivalent of `ls`, list the direct children of a given path in pic-sure
 -- lsPath with the empty string switches to lsResources
 lsPath :: Bool -> String -> MbStIO [String]
 lsPath _ "" = listServices
 lsPath relative path = let
-  l = reverse . snd . foldl f ("", []) $ splitPath $ "/" </> path
+  l = reverse . snd . foldl f ("", []) $ splitPath $ path
     where f (s, acc) e = (s</>e, s</>e : acc)
   go :: [Char] -> MbStIO [String]
   go p = do
     cache <- lift $ gets cache
     cachef <- lift $ cacheFile <$> gets config
-    let l = splitPath p
-    case treeFind cache l of
-      Just l -> liftMaybe . Just $ map (perhaps (not relative) (p</>) . treeValue) l
+    lift (cacheFetch p) >>= \case
+      Just ll -> liftMaybe . Just $ map (perhaps (not relative) (p</>) . treeValue) ll
       Nothing -> do -- not in cache: perform request
-        -- paths :: Maybe [String]
+        liftIO $ print $ show (splitPath p) ++ " is not in " ++ show cache 
         paths <- do
           let pui = (perhaps (not relative) (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
           r <- getRequest' (urlPath </> p) >>= MaybeT . return . decode
           return $ (fmap pui . unArray) <$> r
-            -- paths = (fmap pui . unArray<$>) <$> (resp>>=decode)
-        lift $ traverse (modify . (flip addToCache)) l >> persistCache
+        lift (when (paths/=Nothing) $ do
+          traverse (modify . (flip addToCache)) (map (p</>) $ fromJust paths) >> persistCache)
         liftMaybe paths
+
   in last <$> traverse go l
 
 lsPath' = lsPath False
@@ -107,8 +106,7 @@ bfs nextf checkf startNode = let
         case (foldl f Nothing (node:nexts)) of
           Nothing -> run $ nodes++nexts
           n -> liftMaybe $ (node</>) <$> n
-  in do ans <- run [startNode]
-        error ans
+  in run [startNode]
 
 -- |search a specific <node>, starting at the absolute path <from>
 searchPath :: String -> String -> MbStIO String
@@ -117,8 +115,7 @@ searchPath node from = do
   let (headNode : restNode) = splitPath node
       checkf = boolToMaybe (==headNode) . pathdirname
   (\e -> foldl (</>) e restNode) <$> bfs lsPath' checkf from >>=  -- bfs
-    \p -> (do error p
-              lsPath' p) >>=                                           -- check full path existence
+    \p -> lsPath' p >>=                                           -- check full path existence
     \_ -> liftMaybe $ Just p                                      -- return
   
 -- |search in all the available resources

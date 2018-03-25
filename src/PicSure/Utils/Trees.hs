@@ -47,29 +47,45 @@ instance Traversable Tree where
   traverse f (Node a l) = Node <$> f a <*> traverse (traverse f) l
   traverse f (Leaf a)   = Leaf <$> f a
 
-instance (Eq α) => Monoid (Tree α) where
+instance (Eq α, Show α) => Monoid (Tree α) where
   mempty = Empty
-  mappend (Leaf a) n = Node a [n]
   mappend Empty e = e
   mappend e Empty = e
-  mappend (Node a l) n = Node a $ add l n
-    where add :: (Eq α) => [Tree α] -> Tree α -> [Tree α]
-          add [] t = [t]
+  mappend na nb  | treeValue na /= treeValue nb = error . unlines $ ["could not add ", show na, "to", show nb]
+                 | otherwise = case na of
+                     (Leaf a) -> nb
+                     (Node a l) -> case nb of (Leaf _) -> nb
+                                              (Node _ l') -> Node a $ foldl add l l'
+    where add [] t = [t]
           add (a:as) b
-            | treeValue a == treeValue b = case a of
-                (Node na la) -> case b of
-                  (Node nb lb) -> Node na (foldl add la lb) : as
-                  (Leaf nb)    -> a : as
-                (Leaf na)    -> b : as
+            | treeValue a == treeValue b = mappend a b : as
             | otherwise = a : add as b
-          --       | otherwise = a : add as b
-          -- add (nodea@:xs) node@(Node n l)
-          --   | na == n = 
-          --   | otherwise = nodea : add xs node
-          -- add (nodea@(Leaf na):xs) node@(Node n l)
-          --   | na == n = node : xs
-          --   | otherwise = nodea : add xs node
-          -- all (nodea@(Node na la):xs) node@(Node n l)
+
+
+
+-- instance (Eq α) => Monoid (Tree α) where
+--   mempty = Empty
+--   mappend (Leaf a) n = Node a [n]
+--   mappend Empty e = e
+--   mappend e Empty = e
+--   mappend (Node a l) n = Node a $ add l n
+--     where add :: (Eq α) => [Tree α] -> Tree α -> [Tree α]
+--           add [] t = [t]
+--           add (a:as) b
+--             | treeValue a == treeValue b = case a of
+--                 (Node na la) -> case b of
+--                   (Node nb lb) -> Node na (foldl add la lb) : as
+--                   (Leaf nb)    -> a : as
+--                 (Leaf na)    -> b : as
+--             | otherwise = a : add as b
+--           --       | otherwise = a : add as b
+--           -- add (nodea@:xs) node@(Node n l)
+--           --   | na == n = 
+--           --   | otherwise = nodea : add xs node
+--           -- add (nodea@(Leaf na):xs) node@(Node n l)
+--           --   | na == n = node : xs
+--           --   | otherwise = nodea : add xs node
+--           -- all (nodea@(Node na la):xs) node@(Node n l)
 
 treeValue (Leaf a) = a
 treeValue (Node a l) = a
