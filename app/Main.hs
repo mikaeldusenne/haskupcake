@@ -23,18 +23,26 @@ import PicSure.Utils.Paths
 import PicSure.Types
 
 
+import Data.CSV
+import Text.ParserCombinators.Parsec
+
 f = do
-  paths <- lines <$> readFile "data/paths.txt"
-  withConfig "config.json" $ do
-    fullpaths <- mapM searchPath' paths
-    return fullpaths
-    -- -- regex regression
-    -- children <- concat <$> traverse lsPath' paths
-    -- return $ filter f children
-    --   where f = match (makeRegexOpts compCaseless defaultExecOpt  ("ever.*regression" :: String) :: Regex)
+  -- paths <- lines <$> readFile "data/paths.txt"
+  Right csv <- parseFromFile csvFile "test.csv"
+  let uids = tail $ map head . filter (any (=="Yes")) $ csv
+      l = filter (any (`elem`uids)) $ csv
+  liftIO $ do
+    print l
+    print $ uids
+  
+  -- withConfig "config.json" $ do
+    -- fullpaths <- mapM searchPath' paths
+    -- return fullpaths
+    
 
 main :: IO ()
 main = do
+  f
   putStrLn "ok"
 
 

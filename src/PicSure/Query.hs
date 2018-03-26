@@ -111,7 +111,7 @@ buildQuery l = let
                            field=field,
                            predicate=CONTAINS,
                            logicalOperator=OR,
-                           fields = M.fromList[("ENOUNTER","YES")]}) fields
+                           fields = M.fromList[("ENOUNTER","NO")]}) fields
   in Query{select=vars, whereClauses=whereClauses}  
 
 -- simpleQuery :: [(String, String)] -> StateT PicState IO ()

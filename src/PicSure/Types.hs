@@ -20,7 +20,6 @@ import qualified Data.Text as T
 import PicSure.Utils.Misc
 import PicSure.Utils.Json
 import PicSure.Utils.Trees
-import System.Directory
 
 type MbStIO a = MaybeT (StateT PicState IO) a
 
@@ -33,19 +32,6 @@ data PicState = PicState {
 
 cacheRoot = Node "/" []
 
-genPicState c = do
-  cache <- case cacheFile c of
-    Just file -> do
-      doesFileExist file >>= \case
-        False -> return cacheRoot
-        True -> do
-          s <- readFile file
-          return $ if s == "" then cacheRoot else read s
-    _ -> return cacheRoot
-  return PicState{
-    config=c,
-    cache = cache
-  }
 
 data Config = Config {
   domain :: String,

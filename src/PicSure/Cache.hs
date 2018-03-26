@@ -1,6 +1,8 @@
 {-# LANGUAGE DuplicateRecordFields, LambdaCase #-}
 module PicSure.Cache where
 
+import qualified Data.Binary as B
+
 import PicSure.Utils.Trees
 import PicSure.Utils.Paths
 import PicSure.Utils.Misc
@@ -21,17 +23,16 @@ addToCache (PicState {config=c, cache=cache}) path = PicState{
   cache=cache <> fromList (splitPath $ "/" </> path)
   }
 
-cacheFetch :: String -> StateT PicState IO (Maybe [Tree String])
+cacheFetch :: String -> StateT PicState IO (Maybe (Tree String))
 cacheFetch path = do
   gets cache >>= return . \case
     Empty -> Nothing
-    tree -> treeFind tree $ splitPath $ "/" </> path
+    tree -> treeFind tree . splitPath $ "/" </> path
 
 persistCache :: StateT PicState IO ()
 persistCache = do
   s@PicState{config=Config{cacheFile=path}, cache=cache} <- get
-  -- liftIO $ print ("cache", addToCache s )
-  when (path/=Nothing) $ liftIO . writeFile (fromJust path) . show $ cache
+  when (path/=Nothing) . liftIO $ B.encodeFile (fromJust path) cache
 
 invalidateCache :: StateT PicState IO ()
 invalidateCache = do

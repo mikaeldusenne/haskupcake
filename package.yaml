@@ -49,6 +49,7 @@ library:
     - parsec
     - monadplus
     - strict
+    - binary
 
 executables:
   haskupcake:

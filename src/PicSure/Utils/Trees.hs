@@ -1,6 +1,10 @@
+{-# LANGUAGE DeriveGeneric #-}
 module PicSure.Utils.Trees where
 
 import Data.List
+import GHC.Generics (Generic)
+
+import qualified Data.Binary as B
 
 import Data.List(foldl')
 import Control.Monad.Plus
@@ -8,6 +12,9 @@ import PicSure.Utils.List
 import PicSure.Utils.Misc
 
 data Tree α = Node α [Tree α] | Leaf α | Empty
+  deriving(Generic)
+
+instance B.Binary a => B.Binary (Tree a)
 
 -- instance (Show α) => Show (Tree α) where
 --   show = unlines . sh ""
@@ -90,6 +97,9 @@ instance (Eq α, Show α) => Monoid (Tree α) where
 treeValue (Leaf a) = a
 treeValue (Node a l) = a
 
+treeChildren (Node _ l) = Just l
+treeChildren _          = Nothing
+
 toList :: Tree a -> [a]
 toList = foldl' (\acc e -> acc++[e]) []
 
@@ -101,12 +111,13 @@ fromList [] = Empty
 fromList [x] = Leaf x
 fromList (x:xs) = Node x [fromList xs]
 
-treeFind :: Eq a => Tree a -> [a] -> Maybe [Tree a]
-treeFind (Leaf a) _ = Nothing
+treeFind :: Eq a => Tree a -> [a] -> Maybe (Tree a)
 treeFind Empty _    = Nothing
+treeFind l@(Leaf a) [x] = if a == x then Just l else Nothing
+treeFind l@(Leaf a) _ = Nothing
 treeFind (Node _ l) [] = Nothing
-treeFind (Node n l) [x] | n == x = Just l
-                        | otherwise = Nothing
+treeFind node@(Node n l) [x] | n == x = Just node
+                             | otherwise = Nothing
 treeFind (Node n l) (x:xs)
   | n == x = foldl mplus Nothing (map (`treeFind`xs) l)
   | otherwise = Nothing

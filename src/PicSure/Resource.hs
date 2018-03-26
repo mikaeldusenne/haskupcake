@@ -69,8 +69,12 @@ lsPath relative path = do
       go :: [Char] -> MbStIO [String]
       go p = do
         lift (cacheFetch p) >>= \case
-          Just ll -> liftMaybe . Just $ map (perhaps (not relative) (p</>) . treeValue) ll
+          Just ll -> do
+            let f Nothing  = []
+                f (Just l) = l
+            liftMaybe . Just . f . (map (perhaps (not relative) (p</>) . treeValue)<$>) . treeChildren $ ll
           Nothing -> do -- not in cache: perform request
+            liftIO $ print $ "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" ++ p
             paths <- do
               let pui = (perhaps relative (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
               r <- getRequest' (urlPath </> p) >>= MaybeT . return . decode
@@ -84,6 +88,19 @@ lsPath' = lsPath False
 
 
 findPath term = getRequest urlFind [("term", term)]
+
+
+-- | returns a list of leafs starting at the specified subtree
+-- | warning: for categorical variables it will return one leaf for each modality
+find_leafs :: String -> MbStIO [String]
+find_leafs "" = liftMaybe Nothing
+find_leafs path = do
+  liftIO $ print path
+  children <- lsPath' path
+  if isEmpty children
+    then liftMaybe $ Just [path]
+    else do l <- traverse find_leafs children
+            liftMaybe . Just $ concat l
 
 
 -- |custom breadth first search
