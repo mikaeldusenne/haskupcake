@@ -77,17 +77,17 @@ instance FromJSON Config where
         manager = undefined -- disgustingly ugly?
     return Config{..}
 
-data Status = AVAILABLE | RUNNING | STARTED
+data Status = AVAILABLE | RUNNING | STARTED | ERROR
   deriving (Show, Read)
 
 data Field = Field {pui :: String,
                     dataType :: String}
-  deriving (Generic)
+  deriving (Generic, Show)
 
 
 data Variable = Variable {field :: Field,
                           alias :: String}
-  deriving (Generic)
+  deriving (Generic, Show)
 
 
 data Predicate = CONTAINS
@@ -101,7 +101,7 @@ data Where = Where {field :: Field,
                     logicalOperator :: LogicalOperator,
                     fields :: M.HashMap String String
                    }
-  deriving(Generic)
+  deriving(Generic, Show)
   
 
 data Query = Query {select :: [Variable], whereClauses :: [Where]}

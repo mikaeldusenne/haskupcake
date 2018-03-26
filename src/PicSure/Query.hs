@@ -24,7 +24,7 @@ import qualified Data.Text as T
 import Data.Scientific
 import qualified Data.Vector as V
 import qualified Data.CSV as CSV
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec (parse)
 import Data.List
 
 import Control.Monad.Fix
@@ -56,7 +56,7 @@ query cols whereClause = do
       extract = rightToMaybe . floatingOrInteger . unNumber . J.lookup "resultId"
   postRequest urlRunQuery body >>= liftMaybe . (>>=extract) . decodeValue
 
--- resultStatus :: Show a => a -> MbStIO Status
+resultStatus :: Show a => a -> MbStIO Status
 resultStatus n = getRequest (urlResultStatus</>show n) [] >>= liftMaybe . (read . unString . J.lookup "status"<$>) . decodeValue
 
 -- resultAvailableFormats :: Int -> MbStIO Value
@@ -79,7 +79,8 @@ resultDownload n file = request' (urlResultDownloadCSV n) (Params []) $ \resp ->
       BS.hPut h bytes -- otherwise we write the bytes to the file
       loop            -- and we keep "looping"
 
-toAlias = replaceStr " " "_" . basename
+toAlias = filter (`elem` l) . replaceStr " " "_" . basename
+  where l = "-_" ++ alphaNum
 
 -- csvCol n csv = map (!!n) csv
 
@@ -116,10 +117,13 @@ buildQuery l = let
 -- simpleQuery :: [(String, String)] -> StateT PicState IO ()
 simpleQuery :: [(String, String)] -> String -> MbStIO ()
 simpleQuery cols file = do
-  puis <- traverse searchPath' $  map snd cols
+  let (aliases, puis) = unzip cols
+  puis' <- traverse searchPath' $ puis
   let join = joinCsv
-      waitUntilAvailable n = resultStatus n >>= \case AVAILABLE -> return ()
-                                                      _ -> liftIO (threadDelay 1000000) >> waitUntilAvailable n
+      waitUntilAvailable n = 
+        resultStatus n >>= \case AVAILABLE -> return ()
+                                 ERROR -> error $ "There was an error with result " ++ show n
+                                 _ -> liftIO (threadDelay 1000000) >> waitUntilAvailable n
       q (Query vs ws) = do
         n <- query vs ws
         waitUntilAvailable n
@@ -134,6 +138,6 @@ simpleQuery cols file = do
                 merge ((h:_):xs) = (h:[alias]) : map f xs
                   where f (c:cs) = c : [concat cs]
     
-  l <- (\l -> if length l > 1 then reduce join l else head l) <$> mapM queryOne cols
+  l <- (\l -> if length l > 1 then reduce join l else head l) <$> mapM queryOne (zip aliases puis')
   -- liftIO $ mapM_ (\(name, content) -> writeFile name $ CSV.genCsvFile content) $ zip (map fst cols) l
   liftIO $ writeFile file $ CSV.genCsvFile l

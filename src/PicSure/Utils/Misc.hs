@@ -2,6 +2,8 @@ module PicSure.Utils.Misc where
 
 import Control.Monad.Plus
 
+alphaNum = "azertyuiopmlkjhgfdsqwxcvbnAZERTYUIOPMLKJHGFDSQWXCVBN1234567890"
+
 fromJust Nothing  = error "could not apply fromJust to Nothing"
 fromJust (Just a) = a
 
