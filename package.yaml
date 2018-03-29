@@ -67,6 +67,8 @@ executables:
     - transformers
     - regex-pcre
     - mtl
+    - parsec
+    - MissingH
 
 tests:
   haskupcake-test:

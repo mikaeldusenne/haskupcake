@@ -18,4 +18,4 @@ splitPath p = filter (not.isEmpty) . (x:) .splitWhen "/" $ p
           _ -> ""
 
 basename = last . splitPath
-dirname  = last . init . splitPath
+dirname  = reduce (</>) . init . splitPath

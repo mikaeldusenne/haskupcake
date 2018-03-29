@@ -27,7 +27,9 @@ cacheFetch :: String -> StateT PicState IO (Maybe (Tree String))
 cacheFetch path = do
   gets cache >>= return . \case
     Empty -> Nothing
-    tree -> treeFind tree . splitPath $ "/" </> path
+    tree -> case (treeFind tree . splitPath $ "/" </> path) of
+      (Just (n@(Node _ _))) -> Just n
+      _ -> Nothing
 
 persistCache :: StateT PicState IO ()
 persistCache = do

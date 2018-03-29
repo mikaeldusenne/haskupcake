@@ -53,7 +53,7 @@ listResources = getRequest' urlResources >>= MaybeT . return . decodeValue
 -- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
 
-pathdirname = (\l -> if isEmpty l then "" else last l) . filter (not . isEmpty) . splitOn (=='/')
+pathbasename = (\l -> if isEmpty l then "" else last l) . filter (not . isEmpty) . splitOn (=='/')
 pathLength = length . splitOn (=='/')
 
 
@@ -64,17 +64,14 @@ lsPath _ "" = listServices
 lsPath relative path = do
   cachef <- lift $ cacheFile <$> gets config
   let l = [path]
-      -- l = perhaps (cachef==Nothing) ((:[]).last) . reverse . snd . foldl f ("", []) $ splitPath $ path
-      --   where f (s, acc) e = (s</>e, s</>e : acc)
       go :: [Char] -> MbStIO [String]
       go p = do
         lift (cacheFetch p) >>= \case
-          Just ll -> do
-            let f Nothing  = []
-                f (Just l) = l
-            liftMaybe . Just . f . (map (perhaps (not relative) (p</>) . treeValue)<$>) . treeChildren $ ll
+          (Just ll) -> do
+            -- liftIO $ print "found in cache"
+            liftMaybe . (map (perhaps (not relative) (p</>) . treeValue)<$>) . treeChildren $ ll
           Nothing -> do -- not in cache: perform request
-            liftIO $ print $ "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" ++ p
+            -- liftIO $ print "lspath"
             paths <- do
               let pui = (perhaps relative (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
               r <- getRequest' (urlPath </> p) >>= MaybeT . return . decode
@@ -95,7 +92,6 @@ findPath term = getRequest urlFind [("term", term)]
 find_leafs :: String -> MbStIO [String]
 find_leafs "" = liftMaybe Nothing
 find_leafs path = do
-  liftIO $ print path
   children <- lsPath' path
   if isEmpty children
     then liftMaybe $ Just [path]
@@ -110,7 +106,6 @@ bfs :: (String -> MbStIO [String])
     -> (String -> Maybe String)
     -> String
     -> MbStIO String
--- todo cleaner / more abstract types?
 bfs nextf checkf startNode = let
   run :: [String] -> MbStIO String
   run [] = liftMaybe Nothing  -- found nothing
@@ -128,9 +123,12 @@ searchPath :: String -> String -> MbStIO String
 searchPath node from = 
   isAbsolute node >>= ((?) (liftMaybe (Just node)) $ do
   let (headNode : restNode) = splitPath node
-      checkf = boolToMaybe (==headNode) . pathdirname
+      checkf = boolToMaybe (==headNode) . pathbasename
   (\e -> foldl (</>) e restNode) <$> bfs lsPath' checkf from >>=  -- bfs
-    \p -> lsPath' p >>=                                           -- check full path existence
+    \p -> (do l <- lsPath' (dirname p)
+              liftMaybe . boolToMaybe (p `elem`) $ l 
+          )  
+               >>=                                           -- check full path existence
     \_ -> liftMaybe $ Just p)                                      -- return
   
 -- |search in all the available resources

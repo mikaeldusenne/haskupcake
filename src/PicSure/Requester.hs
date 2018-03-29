@@ -121,7 +121,10 @@ request url postget = do
               retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
 
       -- get :: MaybeT (StateT PicState IO) BSL.ByteString
-      get = BSL.fromChunks <$> request' url postget (brConsume . responseBody)
+      get = do
+        r <- request' url postget (brConsume . responseBody)
+        liftIO $ print r
+        return $ BSL.fromChunks r
   (Mbt.liftCatch $ Stt.liftCatch catch) get exceptionHandler
 
 -- |send a GET request to the pic-sure api

@@ -100,6 +100,7 @@ treeValue (Node a l) = a
 treeChildren (Node _ l) = Just l
 treeChildren _          = Nothing
 
+
 toList :: Tree a -> [a]
 toList = foldl' (\acc e -> acc++[e]) []
 

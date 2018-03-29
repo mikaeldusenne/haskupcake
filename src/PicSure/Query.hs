@@ -119,6 +119,7 @@ simpleQuery :: [(String, String)] -> String -> MbStIO ()
 simpleQuery cols file = do
   let (aliases, puis) = unzip cols
   puis' <- traverse searchPath' $ puis
+  -- liftIO $ print ("puis", puis')
   let join = joinCsv
       waitUntilAvailable n = 
         resultStatus n >>= \case AVAILABLE -> return ()
@@ -126,12 +127,15 @@ simpleQuery cols file = do
                                  _ -> liftIO (threadDelay 1000000) >> waitUntilAvailable n
       q (Query vs ws) = do
         n <- query vs ws
+        liftIO $ putStrLn $ "query #" ++ show n
         waitUntilAvailable n
         fromRight <$> resultFetch n
       queryOne :: (String, String) -> MbStIO [[String]]
       queryOne (alias, pui) = let
         Query{select=vars, whereClauses=whereClauses} = buildQuery [(alias, pui)]
-        in lsPath False pui >>= \case
+        
+        
+        in (liftIO $ print ("queryOne", alias, pui)) >> lsPath False pui >>= \case
         [] -> q $ Query vars whereClauses
         l  -> merge <$> (q $ buildQuery $ zip (map toAlias l) l)
           where merge :: [[String]] -> [[String]]
