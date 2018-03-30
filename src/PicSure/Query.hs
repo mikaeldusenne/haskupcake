@@ -48,6 +48,7 @@ urlResultStatus     = urlResultService </> "resultStatus"
 urlAvailableFormats = urlResultService </> "availableFormats"
 urlResultDownload   = urlResultService </> "result"
 
+oneSecond = 1000000 -- microseconds, for threaddelay
 
 -- query :: Integral n => [Variable] -> [Where] -> StateT PicState IO n
 query :: [Variable] -> [Where] -> MbStIO Int
@@ -88,60 +89,55 @@ toAlias = filter (`elem` l) . replaceStr " " "_" . basename
 --   where a = take n l
 --         b = drop (n+1) l
 
+-- -- not needed
 -- join two csv by their id column, that is assumed to be the first column
 -- joinCsv :: (Eq a, Data.String.IsString a) => [[a]] -> [[a]] -> [[a]]
-joinCsv (ha : a) (hb : b) = let
-  ids = union (map head a) (map head b)
-  assemble a b = a' ++ tail b -- do not repeat id column
-    where a' = case a of ("":xs) -> head b : tail a -- if a was empty then put the id in b
-                         _ -> a
-  findRow id csv = just_or_default (take n $ repeat "")
-                   . safe_head
-                   . filter ((==id) . head)
-                   $ csv
-    where n = length $ head csv
-  in assemble ha hb : map (\id -> assemble (findRow id a)
-                             ((findRow id b))) ids
+-- joinCsv (ha : a) (hb : b) = let
+--   ids = union (map head a) (map head b)
+--   assemble a b = a' ++ tail b -- do not repeat id column
+--     where a' = case a of ("":xs) -> head b : tail a -- if a was empty then put the id in b
+--                          _ -> a
+--   findRow id csv = just_or_default (take n $ repeat "")
+--                    . safe_head
+--                    . filter ((==id) . head)
+--                    $ csv
+--     where n = length $ head csv
+--   in assemble ha hb : map (\id -> assemble (findRow id a)
+--                              ((findRow id b))) ids
 
 
-buildQuery l = let
-    fields = map ((\pui -> Field{pui=pui, dataType="STRING"}) . snd) l
-    vars = zipWith (\ field (alias, _) -> (Variable{field=field, alias=alias})) fields l
-    whereClauses = map (\field -> Where{
-                           field=field,
-                           predicate=CONTAINS,
-                           logicalOperator=OR,
-                           fields = M.fromList[("ENOUNTER","NO")]}) fields
-  in Query{select=vars, whereClauses=whereClauses}  
+-- for an alias and a pui, create the corresponding Query value
+-- in case of a categorical variable, each modality will be listed
+-- in the select part, but keeping the same alias so all results
+-- end up in the same column.
+mkQuery :: (String, String) -> MbStIO Query
+mkQuery (alias, pui) = let
+  f l = let
+    fields = map (`Field`"String") l
+    vars = map (\f -> Variable{field=f, alias=alias}) fields
+    whereClauses = Where{
+      field=Field{pui=pui, dataType="STRING"},
+      predicate=CONTAINS,
+      logicalOperator=OR,
+      fields = M.fromList[("ENOUNTER","NO")]}
+    in Query{select=vars, whereClauses=[whereClauses]}
+  in lsPath' pui >>= return . f . (perhaps' isEmpty (const [pui]))
+
+waitUntilAvailable n = resultStatus n >>=
+  \case AVAILABLE -> return ()
+        ERROR -> error $ "There was an error with result " ++ show n
+        _ -> liftIO (threadDelay oneSecond) >> waitUntilAvailable n
 
 -- simpleQuery :: [(String, String)] -> StateT PicState IO ()
 simpleQuery :: [(String, String)] -> String -> MbStIO ()
-simpleQuery cols file = do
-  let (aliases, puis) = unzip cols
-  puis' <- traverse searchPath' $ puis
-  -- liftIO $ print ("puis", puis')
-  let join = joinCsv
-      waitUntilAvailable n = 
-        resultStatus n >>= \case AVAILABLE -> return ()
-                                 ERROR -> error $ "There was an error with result " ++ show n
-                                 _ -> liftIO (threadDelay 1000000) >> waitUntilAvailable n
-      q (Query vs ws) = do
+simpleQuery cols file =
+  -- todo this could be prettier somehow
+  mapM (\(a, p) -> do p' <- searchPath' p                    -- resolve all paths first
+                      return (a, p')) cols >>= \cols -> do
+  let q (Query vs ws) = do
         n <- query vs ws
-        liftIO $ putStrLn $ "query #" ++ show n
         waitUntilAvailable n
         fromRight <$> resultFetch n
-      queryOne :: (String, String) -> MbStIO [[String]]
-      queryOne (alias, pui) = let
-        Query{select=vars, whereClauses=whereClauses} = buildQuery [(alias, pui)]
-        
-        
-        in (liftIO $ print ("queryOne", alias, pui)) >> lsPath False pui >>= \case
-        [] -> q $ Query vars whereClauses
-        l  -> merge <$> (q $ buildQuery $ zip (map toAlias l) l)
-          where merge :: [[String]] -> [[String]]
-                merge ((h:_):xs) = (h:[alias]) : map f xs
-                  where f (c:cs) = c : [concat cs]
-    
-  l <- (\l -> if length l > 1 then reduce join l else head l) <$> mapM queryOne (zip aliases puis')
-  -- liftIO $ mapM_ (\(name, content) -> writeFile name $ CSV.genCsvFile content) $ zip (map fst cols) l
+
+  l <- (mconcat <$> traverse mkQuery cols) >>= q
   liftIO $ writeFile file $ CSV.genCsvFile l

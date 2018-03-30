@@ -92,6 +92,9 @@ data Where = Where {field :: Field,
 
 data Query = Query {select :: [Variable], whereClauses :: [Where]}
 
+instance Monoid Query where
+  mempty = Query [] []
+  mappend (Query sa wa) (Query sb wb) = Query (sa++sb) (wa++wb)
 
 instance ToJSON Predicate where
   toJSON e = String . T.pack $ show e

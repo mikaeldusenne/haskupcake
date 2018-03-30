@@ -33,6 +33,8 @@ applyToSnd f (a, b) = (a, f b)
 applyToFst f (a, b) = (f a, b)
 
 perhaps b f = if b then f else id
+perhaps' bf f e = perhaps (bf e) f $ e
+
 
 liftMaybe :: (MonadPlus m) => Maybe a -> m a
 liftMaybe = maybe mzero return
