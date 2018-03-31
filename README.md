@@ -60,7 +60,7 @@ import PicSure.Types
 
 ### YAML configuration file
 
-This is a simple json file, containing an object that needs to have a `domain` and a `token` attribute:
+This is a simple [YAML](https://en.wikipedia.org/wiki/YAML) file, containing an object that needs to have a `domain` and a `token` attribute:
 
 ```yaml
 domain: https://your.domain.name
@@ -72,29 +72,28 @@ It needs to be loaded with `readConfig` from the `PicSure.Config` module, which 
 The `debug` attribute is optional, and gives a more detailled output.  
 `token` is required (api key authentication is not supported)
 
-### Reader monad
+### State monad
 
-The configuration file is passed around with the help of the [Reader Monad](https://wiki.haskell.org/All_About_Monads#The_Reader_monad).
-Therefore you will need to initiate your calls with `runReaderT` and lift your IO operations with `liftIO`.
+The configuration file is passed around with the help of the [State Monad](https://wiki.haskell.org/All_About_Monads#The_State_monad).
+Therefore you will need to initiate your calls with `runStateT` and lift your IO operations with `liftIO`.
 
-You may define a helper `run` function, that takes some action in the readerT monad and returns an IO operation.
-
-```haskell
-run :: ReaderT Config IO a -> IO a
-run f = do
-  config <- readConfig "./config.json"
-  runReaderT f config
-```
-
-This would allow you to do something like:
+You may use the helper `withConfig` function, that takes the path to the configuration file, some action in the readerT monad, and returns an IO operation.
 
 ```haskell
-main = do
-  paths <- run $ lsPath' "/"
-  print paths
-```
+withConfig :: FilePath -> PicSureM a -> IO a
+withConfig s f = readConfig s >>=
+                 genPicState  >>=
+                 (fst <$>) . runStateT f
 
-which would give you the list of resources available from PIC-SURE (listing the path from the root directory, NB `lsPath' ""` works too)
+-- using the config file "config.yaml", list the available resources
+main = withConfig "config.yaml" $ lsPath' "/"
+
+
+-- usage example:
+-- using the config file "config.yaml", query the variable "AGE" using the alias name "Age"
+-- and saves the resulting table as "test.csv"
+main = withConfig "config.yaml" $ simpleQuery ([("Age","AGE")]) "test.csv"
+```
 
 Don't forget to use `liftIO` if you want to perform IO operations inside the Reader monad:
 

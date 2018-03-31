@@ -21,11 +21,10 @@ readConfig f = do
   return c{manager=manager}
 
 
-withConfig :: FilePath -> PicSureM a -> IO (a, PicState)
-withConfig s f = do
-  config <- readConfig s
-  state <- genPicState config
-  runStateT f state
+withConfig :: FilePath -> PicSureM a -> IO a
+withConfig s f = readConfig s >>=
+                 genPicState  >>=
+                 (fst <$>) . runStateT f
 
 genPicState c = do
   cache <- case cacheFile c of
