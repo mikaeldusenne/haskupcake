@@ -23,6 +23,8 @@ dependencies:
 
 library:
   source-dirs: src
+  ghc-options:
+    - -W
   dependencies:
     - http-client
     - http-client-tls
@@ -50,6 +52,7 @@ library:
     - monadplus
     - strict
     - binary
+    - yaml
 
 executables:
   haskupcake:
@@ -59,6 +62,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -W
     dependencies:
     - haskupcake
     - bytestring
@@ -69,6 +73,7 @@ executables:
     - mtl
     - parsec
     - MissingH
+    - yaml
 
 tests:
   haskupcake-test:

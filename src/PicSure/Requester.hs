@@ -2,46 +2,30 @@
 module PicSure.Requester where
 
 import Network.HTTP.Client
-import Network.HTTP.Client.TLS
--- import Network.HTTP.Client
 import Network.HTTP.Types
-import Network.HTTP.Types.URI
 import qualified Network.URI.Encode as URI
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.ByteString.Char8 as BS
-import Data.Conduit
--- import Data.Conduit.Binary (sinkFile)
 import Control.Monad.IO.Class
--- import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Maybe
 
 import qualified Control.Monad.Trans.State as Stt (liftCatch)
-import qualified Control.Monad.Trans.Maybe as Mbt (liftCatch)
 
-import Control.Monad.Trans
-
-import Control.Monad.Trans.Resource
 import Control.Concurrent (threadDelay)
 import Control.Exception
 import Data.Monoid ((<>))
 import Control.Monad
-import Control.Applicative
-import qualified Data.CaseInsensitive as CI
-import Data.List
 
 import Data.List (foldl')
-import System.IO
 
 import PicSure.Utils.Misc
 import PicSure.Utils.Paths
 import PicSure.Utils.List
 import PicSure.Utils.Json
+import PicSure.Utils.Log
 import PicSure.Types
-
-
 
 urlApi = "rest/v1"
 
@@ -68,9 +52,9 @@ logRequest req = do
 
 -- |No http error handling
 -- request' :: String -> PostGet -> StateT Config IO (Response BSL.ByteString)
-request' :: String -> PostGet -> (Response BodyReader -> IO b) -> MaybeT (StateT PicState IO) b
+request' :: String -> PostGet -> (Response BodyReader -> IO b) -> PicSureM b
 request' url postget action = do
-  config <- lift $ gets config
+  config <- gets config
   let tokparam = [("Authorization", BS.pack ("bearer " <> (runToken $ auth config)))]
       applyPostGet req = case postget of
         (Params l) -> req{ queryString = (rq $ l)
@@ -90,51 +74,40 @@ request' url postget action = do
     -- return $ resp
 
 
--- |returns the body of the request encoded with Aeson if all went well.
+-- |returns the body of the request if all went well.
 -- HTTP 500 errors are logged and skipped
 -- HTTP 401 (unauthorized) are thrown (token needs to be refreshed)
 -- for other errors, wait a bit and retry (for unstable connexions)
-request :: String -> PostGet -> MaybeT (StateT PicState IO) (BSL.ByteString)
+request :: String -> PostGet -> PicSureM BSL.ByteString
 request url postget = do
-  -- we're in the Reader Monad, `ask` gives us the environment, ie the Config value
-  PicState{config=c, cache=cache} <- lift get
-  let exceptionHandler :: HttpException -> MaybeT (StateT PicState IO) BSL.ByteString
+  let exceptionHandler :: HttpException -> PicSureM BSL.ByteString
       exceptionHandler e =
         case e of
           (HttpExceptionRequest _ (StatusCodeException c b)) -> 
             liftIO (putStrLn . concat . afterEach "\n────────────────────────\n" $ [show e,BS.unpack b])
             >> f (statusCode . responseStatus $ c)
           _ -> retry e
-        where f :: Int -> MaybeT (StateT PicState IO) (BSL.ByteString)
+        where f :: Int -> PicSureM BSL.ByteString
               f codeNb
-                | codeNb `elem` [500] = MaybeT $ return Nothing -- throw e -- give up on those error codes
-                | codeNb `elem` [401, 404, 400] = do
-                    liftIO $ print e
-                    MaybeT $ return Nothing
+                | codeNb `elem` [500, 401, 404, 400] = error $ show e
                 | otherwise = retry e
-                
-              -- handleError :: Int -> IO (Maybe [Value])
-              handleError n = -- (appendFile "logs" $ show n ++ "," ++ show url ++ "," ++ show fullUrl ++ "\n") >>
-                              print (domain c) >> print url
 
               -- retry :: HttpException -> StateT Config IO (Maybe [Value])
               retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
 
       -- get :: MaybeT (StateT PicState IO) BSL.ByteString
-      get = do
-        r <- request' url postget (brConsume . responseBody)
-        liftIO $ print r
-        return $ BSL.fromChunks r
-  (Mbt.liftCatch $ Stt.liftCatch catch) get exceptionHandler
+      get = (BSL.fromChunks <$> request' url postget (brConsume . responseBody)) >>> (putStrLnLog DEBUG . tryPrettyJson)
+  
+  (Stt.liftCatch catch) get exceptionHandler
 
 -- |send a GET request to the pic-sure api
 -- the provided url will be appened to the root api url,
 -- aka https://<domain>/rest/v1/
-getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> MaybeT (StateT PicState IO) BSL.ByteString
+getRequest :: String -> [(BS.ByteString, BS.ByteString)] -> PicSureM BSL.ByteString
 getRequest url params = request url (Params params)
 
 -- |POST request
-postRequest :: String -> BSL.ByteString -> MaybeT (StateT PicState IO) BSL.ByteString
+postRequest :: String -> BSL.ByteString -> PicSureM BSL.ByteString
 postRequest url body = request url (Body $ RequestBodyLBS body)
 
 -- |send a request without parameters

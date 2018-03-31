@@ -2,14 +2,9 @@
 module PicSure.Resource where
 
 import Control.Monad
-import System.Directory
-import Data.Foldable
 
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans
-import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Maybe
 
 import Data.List
 import Data.Aeson
@@ -32,23 +27,23 @@ urlFind = urlResourceService </> "find"
 urlSystemService = "systemService"
 urlAbout = urlSystemService </> "about"
 
-about :: MbStIO BSL.ByteString
-about = getRequest' urlAbout >>= (MaybeT . return . (prettyJson <$>) .  decodeValue)
+about :: PicSureM BSL.ByteString
+about = getRequest' urlAbout >>= (return . prettyJson . fromJust .  decodeValue)
 
 -- |list available services on pic-sure
-listServices :: MbStIO [String]
+listServices :: PicSureM [String]
 listServices = do
-  lift (gets cache) >>= \case
-    (Node _ l@(x:xs)) -> return (map treeValue l)
+  gets cache >>= \case
+    (Node _ l@(_:_)) -> return (map treeValue l)
     _ -> do
       l <- fmap (unString . PicSure.Utils.Json.lookup "name") . unArray
         <$> listResources
-      lift $ do traverse (modify . (flip addToCache)) l
-                persistCache
+      do traverse (modify . (flip addToCache)) l
+         persistCache
       return l
 
-listResources :: MbStIO Value
-listResources = getRequest' urlResources >>= MaybeT . return . decodeValue
+listResources :: PicSureM Value
+listResources = getRequest' urlResources >>= return . fromJust . decodeValue
 
 -- todo debug this
 subStrAfterPath path = drop (length path) . dropWhile (not . (==(head path)))  -- for the beginning slash
@@ -59,25 +54,26 @@ pathLength = length . splitOn (=='/')
 
 -- |the equivalent of `ls`, list the direct children of a given path in pic-sure
 -- lsPath with the empty string switches to lsResources
-lsPath :: Bool -> String -> MbStIO [String]
+lsPath :: Bool -> String -> PicSureM [String]
 lsPath _ "" = listServices
 lsPath relative path = do
-  cachef <- lift $ cacheFile <$> gets config
   let l = [path]
-      go :: [Char] -> MbStIO [String]
+      go :: [Char] -> PicSureM [String]
       go p = do
-        lift (cacheFetch p) >>= \case
-          (Just ll) -> do
+        cacheFetch p >>= \case
+          (Just (Node _ ll)) -> do
             -- liftIO $ print "found in cache"
-            liftMaybe . (map (perhaps (not relative) (p</>) . treeValue)<$>) . treeChildren $ ll
-          Nothing -> do -- not in cache: perform request
+            return . (map (perhaps (not relative) (p</>) . treeValue)) $ ll
+          _ -> do -- not in cache: perform request
             -- liftIO $ print "lspath"
             paths <- do
               let pui = (perhaps relative (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
-              r <- getRequest' (urlPath </> p) >>= MaybeT . return . decode
-              return $ (fmap pui . unArray) <$> r
-            lift (when (paths/=Nothing) $ traverse (modify . (flip addToCache)) (fromJust paths) >> persistCache)
-            liftMaybe paths
+              r <- fromJust . decode <$> getRequest' (urlPath </> p)
+              return $ (fmap pui . unArray) $ r
+            -- liftIO $ print ("paths", paths)
+            (case paths of (_:_) -> mapM_ (modify . (flip addToCache)) paths
+                           [] -> modify ((flip setNoChildrenCache) path)) >> persistCache
+            return paths
 
   last <$> traverse go l
 
@@ -89,7 +85,7 @@ findPath term = getRequest urlFind [("term", term)]
 
 -- | returns a list of leafs starting at the specified subtree
 -- | warning: for categorical variables it will return one leaf for each modality
-find_leafs :: String -> MbStIO [String]
+find_leafs :: String -> PicSureM [String]
 find_leafs "" = liftMaybe Nothing
 find_leafs path = do
   children <- lsPath' path
@@ -102,12 +98,12 @@ find_leafs path = do
 -- |custom breadth first search
 -- assumes that the tree is acyclic (which it is with pic-sure)
 -- and that the nextf function returns a list of absolute paths
-bfs :: (String -> MbStIO [String])
+bfs :: (String -> PicSureM [String])
     -> (String -> Maybe String)
     -> String
-    -> MbStIO String
+    -> PicSureM String
 bfs nextf checkf startNode = let
-  run :: [String] -> MbStIO String
+  run :: [String] -> PicSureM String
   run [] = liftMaybe Nothing  -- found nothing
   run (node : nodes) = do
         liftIO $ putStrLn node
@@ -119,7 +115,7 @@ bfs nextf checkf startNode = let
   in run [startNode]
 
 -- |search a specific <node>, starting at the absolute path <from>
-searchPath :: String -> String -> MbStIO String
+searchPath :: String -> String -> PicSureM String
 searchPath node from = 
   isAbsolute node >>= ((?) (liftMaybe (Just node)) $ do
   let (headNode : restNode) = splitPath node
@@ -134,6 +130,6 @@ searchPath node from =
 -- |search in all the available resources
 searchPath' node = searchPath node "/"
 
-isAbsolute :: String -> MbStIO Bool
+isAbsolute :: String -> PicSureM Bool
 isAbsolute path = any f <$> listServices
   where f service = isPrefixOf ("/"</>service) ("/"</>path) 

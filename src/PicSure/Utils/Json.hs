@@ -1,7 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, LambdaCase #-}
 module PicSure.Utils.Json where
 
-import Control.Monad.IO.Class (liftIO)
 import qualified Data.Aeson.Encode.Pretty as Pretty
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.HashMap.Strict as HM
@@ -35,3 +34,7 @@ prettyJson = Pretty.encodePretty
 jsonPrettyPrint :: Maybe Value -> IO ()
 jsonPrettyPrint (Just e) = BSL.putStrLn . Pretty.encodePretty $ e
 jsonPrettyPrint Nothing = BSL.putStrLn "Nothing"
+
+tryPrettyJson :: BSL.ByteString -> BSL.ByteString
+tryPrettyJson s = (\case Nothing -> s
+                         Just s' -> Pretty.encodePretty s') $ (decode s :: Maybe Value)

@@ -21,7 +21,7 @@ import PicSure.Utils.Misc
 import PicSure.Utils.Json
 import PicSure.Utils.Trees
 
-type MbStIO a = MaybeT (StateT PicState IO) a
+type PicSureM a = StateT PicState IO a
 
 type Cache = Tree String
 

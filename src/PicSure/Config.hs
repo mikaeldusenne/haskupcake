@@ -1,16 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 module PicSure.Config where
-import Network.HTTP.Client
-import Data.Aeson
-import GHC.Generics
-import qualified Data.ByteString.Lazy.Char8 as BSL
+import Data.Yaml
+import qualified Data.ByteString.Char8 as BS
 
-import Control.Monad.Trans
-import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.State
 
 import System.Directory
-import System.IO.Strict
 
 import PicSure.Utils.Misc
 import PicSure.Types
@@ -21,16 +16,16 @@ import qualified Data.Binary as B
 
 readConfig :: FilePath -> IO Config
 readConfig f = do
-  c <- fromJust . decode <$> BSL.readFile f
+  c <- fromJust . decode <$> BS.readFile f
   manager <- createManager
   return c{manager=manager}
 
 
-withConfig :: FilePath -> MbStIO a -> IO (Maybe a, PicState)
+withConfig :: FilePath -> PicSureM a -> IO (a, PicState)
 withConfig s f = do
   config <- readConfig s
   state <- genPicState config
-  runStateT (runMaybeT f) state
+  runStateT f state
 
 genPicState c = do
   cache <- case cacheFile c of

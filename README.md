@@ -58,16 +58,14 @@ import PicSure.Security
 import PicSure.Types
 ```
 
-### JSON configuration file
+### YAML configuration file
 
 This is a simple json file, containing an object that needs to have a `domain` and a `token` attribute:
 
-```json
-{
-	"domain": "https://your.domain.name",
-	"debug": false,
-	"token": "yourSecretToken",
-}
+```yaml
+domain: https://your.domain.name
+debug: false
+token: yourSecretToken
 ```
 
 It needs to be loaded with `readConfig` from the `PicSure.Config` module, which will return a `Config` object to use with your queries.  
