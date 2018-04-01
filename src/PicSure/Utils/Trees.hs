@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, LambdaCase #-}
 module PicSure.Utils.Trees where
 
 import Data.List
@@ -10,7 +10,7 @@ import Data.List(foldl')
 import Control.Monad.Plus
 
 data Tree α = Node α [Tree α] | Leaf α | Empty
-  deriving(Generic)
+  deriving(Generic, Eq)
 
 instance B.Binary a => B.Binary (Tree a)
 
@@ -89,4 +89,6 @@ treeFind node@(Node n _) [x] | n == x = Just node
                              | otherwise = Nothing
 treeFind (Node n l) (x:xs)
   | n == x = foldl mplus Nothing (map (`treeFind`xs) l)
+      -- (\case Nothing -> Nothing
+      --        Just e -> e) . safe_head . filter (/=Nothing) $ map (`treeFind`xs) l
   | otherwise = Nothing

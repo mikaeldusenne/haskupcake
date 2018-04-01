@@ -3,22 +3,16 @@ module PicSure.Types where
 import Prelude hiding (readFile)
 
 import Network.HTTP.Client
-import Network.HTTP.Types(Header)
 import Data.Aeson
 import qualified Data.HashMap.Strict as M
 import qualified Data.Vector as V
-import qualified Data.Aeson.Encode.Pretty as Pretty
 import GHC.Generics
 import qualified Data.ByteString.Char8 as BS
-import System.IO.Strict
 
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Maybe
 
 import qualified Data.Text as T
 
-import PicSure.Utils.Misc
-import PicSure.Utils.Json
 import PicSure.Utils.Trees
 
 type PicSureM a = StateT PicState IO a
@@ -42,11 +36,12 @@ data Config = Config {
   cacheFile :: Maybe String
   }
 
-defConfig = Config{domain="",
-                  auth=Token "",
-                  debug=True,
-                  sessionCookies=Nothing,
-                  cacheFile=Nothing}
+defConfig = Config{manager = undefined,
+                   domain="",
+                   auth=Token "",
+                   debug=True,
+                   sessionCookies=Nothing,
+                   cacheFile=Nothing}
 
 instance Show Config where
   show (Config{domain=d, auth=auth, cacheFile=cf}) = show d ++ " - " ++ show auth ++ " - " ++ show cf
@@ -60,7 +55,7 @@ instance FromJSON Config where
       Just t -> return $ Token t
       Nothing -> error "no authentication method found in config"
     let sessionCookies = Nothing
-        manager = undefined -- disgustingly ugly?
+        manager = undefined
     return Config{..}
 
 data Status = AVAILABLE | RUNNING | STARTED | ERROR

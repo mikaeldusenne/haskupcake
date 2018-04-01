@@ -85,11 +85,11 @@ withConfig s f = readConfig s >>=
                  genPicState  >>=
                  (fst <$>) . runStateT f
 
+-- usage example:
 -- using the config file "config.yaml", list the available resources
 main = withConfig "config.yaml" $ lsPath' "/"
 
 
--- usage example:
 -- using the config file "config.yaml", query the variable "AGE" using the alias name "Age"
 -- and saves the resulting table as "test.csv"
 main = withConfig "config.yaml" $ simpleQuery ([("Age","AGE")]) "test.csv"
@@ -99,7 +99,7 @@ Don't forget to use `liftIO` if you want to perform IO operations inside the Rea
 
 ```haskell
 main = do
-  l <- run $ do
+  l <- withConfig "config.yaml" $ do
     paths <- lsPath' ""
     liftIO $ print paths
     lsPath' $ head paths
@@ -123,15 +123,21 @@ It's also possible to search for a path, if you know the name of what you're loo
 
 ```haskell
 -- |search a specific <node>, starting at the absolute path <from>
-searchPath :: String -> String -> ReaderT Config IO (Maybe String)
-searchPath node from = bfs lsPath' ((==node) . pathdirname) from
+searchPath :: String -> String -> PicSureM String
 
 -- |search in all the available resources
-searchPath' node = searchPath node ""
+searchPath' :: String -> PicSureM String
+searchPath' node = searchPath node "/"
 ```
 
 This will perform a breadth-first search on all the available paths and return the first one with the same name as the one you provided, or nothing if it didn't find anything.  
 Use it with a bit of patience at hand, because one HTTP request has to be performed at each step, and it can take a long time to complete.
+
+Note that you can vastly improve the speed of the search by providing a part of the path instead of just the variable name. It will also help making sure that the first occurence found by the algorithm is the one you are looking for (variable names may not be unique)
+
+```haskell
+
+```
 
 ### Querying data
 

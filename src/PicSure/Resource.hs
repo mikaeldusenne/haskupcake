@@ -1,9 +1,5 @@
 {-# LANGUAGE OverloadedStrings, BangPatterns, LambdaCase, DuplicateRecordFields #-}
 module PicSure.Resource where
-
-import Control.Monad
-
-import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.State
 
 import Data.List
@@ -61,11 +57,9 @@ lsPath relative path = do
       go :: [Char] -> PicSureM [String]
       go p = do
         cacheFetch p >>= \case
-          (Just (Node _ ll)) -> do
-            -- liftIO $ print "found in cache"
+          (Just (Node _ ll)) -> do -- found in cache
             return . (map (perhaps (not relative) (p</>) . treeValue)) $ ll
           _ -> do -- not in cache: perform request
-            -- liftIO $ print "lspath"
             paths <- do
               let pui = (perhaps relative (subStrAfterPath p) . unString . PicSure.Utils.Json.lookup "pui")
               r <- fromJust . decode <$> getRequest' (urlPath </> p)
@@ -74,7 +68,6 @@ lsPath relative path = do
             (case paths of (_:_) -> mapM_ (modify . (flip addToCache)) paths
                            [] -> modify ((flip setNoChildrenCache) path)) >> persistCache
             return paths
-
   last <$> traverse go l
 
 lsPath' = lsPath False
@@ -82,52 +75,49 @@ lsPath' = lsPath False
 
 findPath term = getRequest urlFind [("term", term)]
 
-
--- | returns a list of leafs starting at the specified subtree
--- | warning: for categorical variables it will return one leaf for each modality
-find_leafs :: String -> PicSureM [String]
-find_leafs "" = liftMaybe Nothing
-find_leafs path = do
-  children <- lsPath' path
-  if isEmpty children
-    then liftMaybe $ Just [path]
-    else do l <- traverse find_leafs children
-            liftMaybe . Just $ concat l
-
-
 -- |custom breadth first search
 -- assumes that the tree is acyclic (which it is with pic-sure)
 -- and that the nextf function returns a list of absolute paths
 bfs :: (String -> PicSureM [String])
     -> (String -> Maybe String)
     -> String
-    -> PicSureM String
+    -> PicSureM (Maybe String)
 bfs nextf checkf startNode = let
-  run :: [String] -> PicSureM String
-  run [] = liftMaybe Nothing  -- found nothing
+  run :: [String] -> PicSureM (Maybe String)
+  run [] = return Nothing  -- found nothing
   run (node : nodes) = do
-        liftIO $ putStrLn node
+        -- liftIO $ putStrLn node
         nexts <- nextf node
-        let f acc e = acc `mplus` checkf e
+        let f :: Maybe String -> String -> Maybe String
+            -- f acc e = acc `mplus` checkf e
+            f acc e =
+              (\case Nothing -> acc
+                     e' -> e') $ checkf e
         case (foldl f Nothing (node:nexts)) of
           Nothing -> run $ nodes++nexts
-          n -> liftMaybe $ (node</>) <$> n
+          n -> return $ (node</>) <$> n
   in run [startNode]
 
 -- |search a specific <node>, starting at the absolute path <from>
-searchPath :: String -> String -> PicSureM String
+searchPath :: String -> String -> PicSureM (Maybe String)
 searchPath node from = 
-  isAbsolute node >>= ((?) (liftMaybe (Just node)) $ do
+  isAbsolute node >>= ((?) (return (Just node)) $ do
   let (headNode : restNode) = splitPath node
       checkf = boolToMaybe (==headNode) . pathbasename
-  (\e -> foldl (</>) e restNode) <$> bfs lsPath' checkf from >>=  -- bfs
-    \p -> (do l <- lsPath' (dirname p)
-              liftMaybe . boolToMaybe (p `elem`) $ l 
-          )  
-               >>=                                           -- check full path existence
-    \_ -> liftMaybe $ Just p)                                      -- return
-  
+  p <- (((\e -> foldl (</>) e restNode)<$>) <$> bfs lsPath' checkf from)
+  case p of Nothing -> return Nothing
+            Just p' -> do
+              lsPath' (dirname p') >>= \l -> return $
+                                   if (p' `elem` l)
+                                   then p
+                                   else Nothing
+                      )
+
+flattenMaybe (Just (Just e)) = Just e
+flattenMaybe _ = Nothing
+
 -- |search in all the available resources
+searchPath' :: String -> PicSureM (Maybe String)
 searchPath' node = searchPath node "/"
 
 isAbsolute :: String -> PicSureM Bool

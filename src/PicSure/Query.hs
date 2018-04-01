@@ -42,13 +42,13 @@ query :: [Variable] -> [Where] -> PicSureM Int
 query cols whereClause = do
   let body = encode $ Query {select=cols, whereClauses=whereClause}
       extract = rightToMaybe . floatingOrInteger . unNumber . J.lookup "resultId"
-  postRequest urlRunQuery body >>= liftMaybe . (>>=extract) . decodeValue
+  postRequest urlRunQuery body >>= return . fromJust . (>>=extract) . decodeValue
 
 resultStatus :: Show a => a -> PicSureM Status
-resultStatus n = getRequest (urlResultStatus</>show n) [] >>= liftMaybe . (read . unString . J.lookup "status"<$>) . decodeValue
+resultStatus n = getRequest (urlResultStatus</>show n) [] >>= return . fromJust . (read . unString . J.lookup "status"<$>) . decodeValue
 
 -- resultAvailableFormats :: Int -> PicSureM Value
-resultAvailableFormats n = getRequest (urlAvailableFormats</>show n) [] >>= liftMaybe . decode
+resultAvailableFormats n = getRequest (urlAvailableFormats</>show n) [] >>= return . fromJust . decode
 
 urlResultDownloadCSV n = (urlResultDownload</>show n</>"CSV")
 
@@ -97,7 +97,8 @@ simpleQuery :: [(String, String)] -> String -> PicSureM ()
 simpleQuery cols file =
   -- todo this could be prettier somehow
   mapM (\(a, p) -> do p' <- searchPath' p                    -- resolve all paths first
-                      return (a, p')) cols >>= \cols -> do
+                      case p' of Nothing -> error "error in requested variables. Please check the paths/spelling."
+                                 Just p'' -> return (a, p'')) cols >>= \cols -> do
   let q (Query vs ws) = do
         n <- query vs ws
         waitUntilAvailable n

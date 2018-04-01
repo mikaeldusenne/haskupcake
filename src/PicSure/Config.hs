@@ -38,6 +38,6 @@ genPicState c = do
                      Right cache -> cache
     _ -> return cacheRoot
   return PicState{
-    config=c,
-    cache = cache
+    config = c,
+    cache  = cache
   }

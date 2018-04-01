@@ -89,11 +89,11 @@ request url postget = do
           _ -> retry e
         where f :: Int -> PicSureM BSL.ByteString
               f codeNb
-                | codeNb `elem` [500, 401, 404, 400] = error $ show e
+                | codeNb `elem` [500, 401, 404, 400] = throw e
                 | otherwise = retry e
 
               -- retry :: HttpException -> StateT Config IO (Maybe [Value])
-              retry e = liftIO (print e >> print "retrying soon..." >> threadDelay 1000000) >> request url postget
+              retry e = liftIO (print e >> putStrLn' "\nretrying soon...\n" >> threadDelay 1000000) >> request url postget
 
       -- get :: MaybeT (StateT PicState IO) BSL.ByteString
       get = (BSL.fromChunks <$> request' url postget (brConsume . responseBody)) >>> (putStrLnLog DEBUG . tryPrettyJson)
