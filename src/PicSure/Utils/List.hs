@@ -17,6 +17,19 @@ isEmpty :: [α] -> Bool
 isEmpty [] = True
 isEmpty _  = False
 
+groupBy :: (Eq a,Ord a) => (a -> a -> Ordering) -> [a] -> [[a]]
+groupBy f = foldl' insert []
+  where insert acc e = walk acc
+          where walk [] = [[e]]
+                walk (l@(x:_):ls) | f x e == EQ = append e l : ls
+                                   | otherwise = l : walk ls
+
+groupBy' :: (Eq b,Ord b) => (a -> b) -> [a] -> [[a]]
+groupBy' f = foldl' insert []
+  where insert acc e = walk acc
+          where walk [] = [[e]]
+                walk (l@(x:xs):ls) | compare (f x) (f e) == EQ = append e l : ls
+                                   | otherwise = l : walk ls
 
 -- slice '/' "45/3"
 -- -> ("45","3") 

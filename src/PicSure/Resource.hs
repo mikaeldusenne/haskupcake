@@ -2,6 +2,7 @@
 module PicSure.Resource where
 import Control.Monad.Trans.State
 
+import Control.Monad.Plus
 import Data.List
 import Data.Aeson
 
@@ -90,9 +91,7 @@ bfs nextf checkf startNode = let
         nexts <- nextf node
         let f :: Maybe String -> String -> Maybe String
             -- f acc e = acc `mplus` checkf e
-            f acc e =
-              (\case Nothing -> acc
-                     e' -> e') $ checkf e
+            f acc e = acc `mplus` checkf e
         case (foldl f Nothing (node:nexts)) of
           Nothing -> run $ nodes++nexts
           n -> return $ (node</>) <$> n
@@ -103,10 +102,16 @@ searchPath :: String -> String -> PicSureM (Maybe String)
 searchPath node from = 
   isAbsolute node >>= ((?) (return (Just node)) $ do
   let (headNode : restNode) = splitPath node
-      checkf = boolToMaybe (==headNode) . pathbasename
-  p <- (((\e -> foldl (</>) e restNode)<$>) <$> bfs lsPath' checkf from)
+      checkf = boolToMaybe f
+        where f p = (headNode == pathbasename p && (length l < 2 || (head . drop 1 $ l) /= "Demo"))
+                where l = splitPath p
+  pp <- bfs lsPath' checkf from
+  let p = ((\e -> foldl (</>) e restNode)<$>) pp
   case p of Nothing -> return Nothing
             Just p' -> do
+              print' ("~~~~~~~~~~~~~~~~~", pp)
+              print' ("~~~~~~~~~~~~~~~~~", p')
+              
               lsPath' (dirname p') >>= \l -> return $
                                    if (p' `elem` l)
                                    then p

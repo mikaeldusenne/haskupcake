@@ -67,8 +67,20 @@ resultDownload n file = request' (urlResultDownloadCSV n) (Params []) $ \resp ->
       BS.hPut h bytes -- otherwise we write the bytes to the file
       loop            -- and we keep "looping"
 
-toAlias = filter (`elem` l) . replaceStr " " "_" . basename
-  where l = "-_" ++ alphaNum
+cleanStr = filter (`elem` l) . replaceStr " " "_" . replaceStr "/" "."
+  where l = ".-_" ++ alphaNum
+
+toAlias l = (`zip` l) . f $ map createAliases l
+  where createAliases :: [Char] -> ([Char], [[Char]])
+        createAliases = (\(x:xs) -> (x, xs)) . reverse . splitPath
+        f :: [(String, [String])] -> [String]
+        f l = let as = map fst l
+              in if length (uniq as) == length as
+                 then map (cleanStr . fst) l
+                 else concat . map (f . g) $ groupBy' fst l
+        g :: [(String, [String])] -> [(String, [String])]
+        g [x] = [x]
+        g l   = map (\(a, b) -> ( (head . take 1) b </> a, drop 1 b)) l
 
 -- for an alias and a pui, create the corresponding Query value
 -- in case of a categorical variable, each modality will be listed
