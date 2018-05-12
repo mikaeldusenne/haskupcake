@@ -13,6 +13,7 @@ import Control.Monad.Trans.State
 
 import qualified Data.Text as T
 
+import PicSure.Utils.Misc
 import PicSure.Utils.Trees
 
 type PicSureM a = StateT PicState IO a
@@ -33,7 +34,8 @@ data Config = Config {
   debug :: Bool,
   sessionCookies :: Maybe CookieJar,
   manager :: Manager,
-  cacheFile :: Maybe String
+  cacheFile :: Maybe String,
+  excluded :: [String]
   }
 
 defConfig = Config{manager = undefined,
@@ -41,19 +43,25 @@ defConfig = Config{manager = undefined,
                    auth=Token "",
                    debug=True,
                    sessionCookies=Nothing,
-                   cacheFile=Nothing}
+                   cacheFile=Nothing,
+                   excluded=[]}
 
 instance Show Config where
-  show (Config{domain=d, auth=auth, cacheFile=cf}) = show d ++ " - " ++ show auth ++ " - " ++ show cf
-
+  show (Config{domain=d, auth=auth, cacheFile=cf, excluded=xc}) = unlines . map show $
+    [("Domain:   ", d),
+     ("Auth:     ", show auth),
+     ("Exclude:  ", show xc),
+     ("cacheFile:", show cf)]
+    
 instance FromJSON Config where
   parseJSON = withObject "config" $ \o -> do
-    domain  <- o .:  "domain"
-    debug   <- o .:? "debug"  .!= False
+    domain      <- o .:  "domain"
+    debug       <- o .:? "debug"  .!= False
     cacheFile   <- o .:? "cache"
-    auth    <- o .:?  "token" >>= \case
-      Just t -> return $ Token t
+    auth        <- o .:? "token" >>= \case
+      Just t  -> return $ Token t
       Nothing -> error "no authentication method found in config"
+    excluded    <- o .:? "excludeResources" >>= return . just_or_default []
     let sessionCookies = Nothing
         manager = undefined
     return Config{..}

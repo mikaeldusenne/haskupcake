@@ -75,7 +75,6 @@ request' url postget action = do
 
 
 -- |returns the body of the request if all went well.
--- HTTP 500 errors are logged and skipped
 -- HTTP 401 (unauthorized) are thrown (token needs to be refreshed)
 -- for other errors, wait a bit and retry (for unstable connexions)
 request :: String -> PostGet -> PicSureM BSL.ByteString

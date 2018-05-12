@@ -8,7 +8,7 @@ import qualified Data.HashMap.Strict as M
 import System.IO
 import Network.HTTP.Client
 
-
+import Control.Monad
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Char8 as BS
 
@@ -17,6 +17,8 @@ import qualified Data.CSV as CSV
 import Text.ParserCombinators.Parsec (parse)
 
 import Control.Monad.Fix
+
+import System.Directory
 
 import PicSure.Utils.Paths
 import PicSure.Utils.List
@@ -70,7 +72,7 @@ resultDownload n file = request' (urlResultDownloadCSV n) (Params []) $ \resp ->
 cleanStr = filter (`elem` l) . replaceStr " " "_" . replaceStr "/" "."
   where l = ".-_" ++ alphaNum
 
-toAlias l = (`zip` l) . f $ map createAliases l
+genAliases l = (`zip` l) . f $ map createAliases l
   where createAliases :: [Char] -> ([Char], [[Char]])
         createAliases = (\(x:xs) -> (x, xs)) . reverse . splitPath
         f :: [(String, [String])] -> [String]
@@ -95,14 +97,14 @@ mkQuery (alias, pui) = let
       field=Field{pui=pui, dataType="STRING"},
       predicate=CONTAINS,
       logicalOperator=OR,
-      fields = M.fromList[("ENOUNTER","NO")]}
+      fields = M.fromList[("ENCOUNTER","YES")]}
     in Query{select=vars, whereClauses=[whereClauses]}
   in printLog DEBUG ("mkQuery", (alias, pui)) >> lsPath' pui >>= return . f . (perhaps' isEmpty (const [pui]))
 
 waitUntilAvailable n = resultStatus n >>=
   \case AVAILABLE -> return ()
         ERROR -> error $ "There was an error with result " ++ show n
-        _ -> liftIO (threadDelay oneSecond) >> waitUntilAvailable n
+        _ -> liftIO (threadDelay $ 10 * oneSecond) >> waitUntilAvailable n
 
 -- simpleQuery :: [(String, String)] -> StateT PicState IO ()
 simpleQuery :: [(String, String)] -> String -> PicSureM ()
@@ -117,4 +119,10 @@ simpleQuery cols file =
         fromRight <$> resultFetch n
 
   l <- (mconcat <$> traverse mkQuery cols) >>= q
+  liftIO $ doesFileExist file >>= (`when` removeFile file)
   liftIO $ writeFile file $ CSV.genCsvFile l
+
+
+simpleQueryFromFile source dest = do
+  puis <- lines <$> liftIO (readFile source)
+  simpleQuery (genAliases puis) dest

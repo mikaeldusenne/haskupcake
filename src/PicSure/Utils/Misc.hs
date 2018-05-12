@@ -2,7 +2,7 @@ module PicSure.Utils.Misc where
 
 import Control.Monad.IO.Class
 
-import Control.Monad.Plus
+-- import Control.Monad.Plus
 
 alphaNum = "azertyuiopmlkjhgfdsqwxcvbnAZERTYUIOPMLKJHGFDSQWXCVBN1234567890"
 
@@ -26,6 +26,7 @@ isJust _ = False
 (?) a b bool = if bool then a else b
 infixr 8 ?
 
+
 just_or_default e Nothing  = e
 just_or_default _ (Just e) = e
   
@@ -40,6 +41,9 @@ applyToFst f (a, b) = (f a, b)
 perhaps b f = if b then f else id
 perhaps' bf f e = perhaps (bf e) f $ e
 
+perhapsM fb f e = fb e >>= \b -> if b then f e else return e
+
+  
 print' :: (MonadIO m, Show a) => a -> m ()
 print' = liftIO . print
 

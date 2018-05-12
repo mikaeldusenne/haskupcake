@@ -19,3 +19,7 @@ splitPath p = filter (not.isEmpty) . (x:) .splitWhen "/" $ p
 
 basename = last . splitPath
 dirname  = reduce (</>) . init . splitPath
+
+
+comparePaths a b = f a `compare` f b
+  where f = ("/" </>) . (</> "/")

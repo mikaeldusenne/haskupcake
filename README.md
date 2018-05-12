@@ -30,7 +30,7 @@ Instead of manually cloning the repo, you can [specify the github repo with a co
 
 ```
 extra-deps:
-- git: git@github.com:mikaunix/haskupcake.git
+- git: https://github.com/mikaunix/haskupcake.git
   commit: 876c2f3a2944fd3f06ff612a911d6a0d2922c748
 ```
 
